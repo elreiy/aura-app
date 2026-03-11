@@ -1,18 +1,14 @@
 <!DOCTYPE html>
-
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Aura">
-<meta name="mobile-web-app-capable" content="yes">
 <title>Aura</title>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getDatabase, ref, push, onChildAdded, serverTimestamp, query, limitToLast, onValue, set, get, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
   const firebaseConfig = {
     apiKey: "AIzaSyAYnbV7A9P21my5e8tH7aeFFOCJTajCOMs",
     authDomain: "aura-app-5284e.firebaseapp.com",
@@ -23,35 +19,18 @@
     appId: "1:145654229990:web:fada57fa05bffe887c0427"
   };
 
-// ── FIX 1: Firebase düzgün başlatma ──
-window._fbReady = false;
-window._auth = null;
-window._db = null;
-window._currentUser = null;
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
 
-window.addEventListener(‘load’, function() {
-try {
-firebase.initializeApp(firebaseConfig);
-// FIX: Doğru şekilde auth ve db alınıyor
-window._auth = firebase.auth();
-window._db   = firebase.database();
-// FIX: window._fb de tanımlanıyor (eski referanslar için)
-window._fb   = { db: window._db, auth: window._auth };
-window._fbReady = true;
+  window._fb = { auth, db, ref, push, onChildAdded, serverTimestamp, query, limitToLast, onValue, set, get, off,
+    createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile };
 
-```
-  window._auth.onAuthStateChanged((user) => {
+  onAuthStateChanged(auth, (user) => {
     window._currentUser = user;
     document.dispatchEvent(new CustomEvent('auth-changed', { detail: { user } }));
   });
-} catch(e) {
-  console.error('Firebase başlatma hatası:', e);
-}
-```
-
-});
 </script>
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap');
 
@@ -84,7 +63,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── SCREENS ── */
-.screen{display:none;flex-direction:column;min-height:100vh;padding-bottom:calc(var(--nav-height) + var(--safe-bottom) + 8px);animation:fadeUp .3s cubic-bezier(.4,0,.2,1)}
+.screen{
+  display:none;flex-direction:column;min-height:100vh;
+  padding-bottom:calc(var(--nav-height) + var(--safe-bottom) + 8px);
+  animation:fadeUp .3s cubic-bezier(.4,0,.2,1)
+}
 .screen.active{display:flex}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .scroll-area{overflow-y:auto;flex:1;padding:0 18px}
@@ -93,9 +76,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 /* STATUS BAR */
 .statusbar{padding:14px 22px 6px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:500;color:var(--sub);flex-shrink:0}
 
-/* BOTTOM NAV */
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(255,255,255,0.97);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;padding-top:10px;padding-bottom:calc(var(--safe-bottom) + 10px);height:calc(var(--nav-height) + var(--safe-bottom));z-index:100;}
-.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border-radius:14px;transition:all .2s;flex:1;}
+/* ═══════════════════════════════════
+   BOTTOM NAV — Düzeltildi
+   iPhone home indicator'dan uzak,
+   safe-area-inset-bottom kullanıyor
+═══════════════════════════════════ */
+.bottom-nav{
+  position:fixed;
+  bottom:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:100%;
+  max-width:430px;
+  background:rgba(255,255,255,0.97);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  border-top:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-around;
+  /* safe-area padding: home indicator'ın üstünde */
+  padding-top:10px;
+  padding-bottom:calc(var(--safe-bottom) + 10px);
+  height:calc(var(--nav-height) + var(--safe-bottom));
+  z-index:100;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;
+  gap:3px;cursor:pointer;padding:4px 8px;
+  border-radius:14px;transition:all .2s;flex:1;
+}
 .nav-item .ni{width:24px;height:24px;transition:transform .2s;color:#C7C7CC}
 .nav-item.active .ni{transform:scale(1.1);color:var(--accent)}
 .nav-label{font-size:10px;color:#C7C7CC;font-weight:500;}
@@ -142,62 +152,167 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 .task-item.done .task-text{text-decoration:line-through;color:var(--sub)}
 .task-reward-badge{margin-left:auto;background:rgba(255,107,0,0.1);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;color:var(--accent);white-space:nowrap;display:flex;align-items:center;gap:4px}
 
-/* MESSAGES */
-.msg-screen-header{padding:16px 18px 10px;background:var(--bg);}
-.msg-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;}
+/* ════════════════════════════════════
+   MESSAGES
+════════════════════════════════════ */
+.msg-screen-header{
+  padding:16px 18px 10px;
+  background:var(--bg);
+}
+.msg-tabs{
+  display:flex;gap:8px;
+  overflow-x:auto;padding-bottom:4px;
+}
 .msg-tabs::-webkit-scrollbar{display:none}
-.msg-tab-btn{padding:7px 16px;border-radius:20px;font-size:13px;font-weight:500;background:var(--card);color:var(--sub);border:none;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'DM Sans',sans-serif;}
+.msg-tab-btn{
+  padding:7px 16px;border-radius:20px;font-size:13px;font-weight:500;
+  background:var(--card);color:var(--sub);border:none;cursor:pointer;
+  white-space:nowrap;transition:all .2s;font-family:'DM Sans',sans-serif;
+}
 .msg-tab-btn.active{background:var(--text);color:white;}
 
-.friend-item{display:flex;align-items:center;gap:12px;padding:12px 18px;cursor:pointer;transition:background .15s;}
+.friend-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 18px;cursor:pointer;
+  transition:background .15s;
+}
 .friend-item:active{background:rgba(0,0,0,0.04)}
-.friend-av{width:50px;height:50px;border-radius:50%;flex-shrink:0;position:relative;overflow:hidden;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:white;}
+.friend-av{
+  width:50px;height:50px;border-radius:50%;
+  flex-shrink:0;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,#FF6B00,#FF9500);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:700;color:white;
+}
 .friend-av img{width:100%;height:100%;object-fit:cover;}
-.online-dot{width:13px;height:13px;background:var(--green);border:2.5px solid white;border-radius:50%;position:absolute;bottom:1px;right:1px;}
+.online-dot{
+  width:13px;height:13px;background:var(--green);
+  border:2.5px solid white;border-radius:50%;
+  position:absolute;bottom:1px;right:1px;
+}
 .friend-info{flex:1;min-width:0}
 .friend-name{font-size:15px;font-weight:500}
 .friend-preview{font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .friend-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 .friend-time{font-size:11px;color:var(--sub)}
-.unread-badge{width:20px;height:20px;background:var(--accent);border-radius:50%;font-size:11px;font-weight:700;color:white;display:flex;align-items:center;justify-content:center;}
+.unread-badge{
+  width:20px;height:20px;background:var(--accent);
+  border-radius:50%;font-size:11px;font-weight:700;
+  color:white;display:flex;align-items:center;justify-content:center;
+}
 
-/* SHEET / BACKDROP */
-.sheet-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;background:rgba(0,0,0,0.5);display:none;}
+/* ═══════════════════════════════════
+   ARKADAŞ EKLE PANELİ — Düzeltildi
+   z-index, pointer-events, kapatma
+═══════════════════════════════════ */
+.sheet-backdrop{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  z-index:200;
+  background:rgba(0,0,0,0.5);
+  display:none;
+}
 .sheet-backdrop.open{display:block}
-.bottom-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:white;border-radius:24px 24px 0 0;padding:24px 22px;padding-bottom:calc(24px + var(--safe-bottom));max-height:88vh;overflow-y:auto;z-index:201;display:none;animation:slideUp .3s cubic-bezier(.4,0,.2,1);}
+
+.bottom-sheet{
+  position:fixed;
+  bottom:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:100%;
+  max-width:430px;
+  background:white;
+  border-radius:24px 24px 0 0;
+  padding:24px 22px;
+  padding-bottom:calc(24px + var(--safe-bottom));
+  max-height:88vh;
+  overflow-y:auto;
+  z-index:201;
+  display:none;
+  animation:slideUp .3s cubic-bezier(.4,0,.2,1);
+}
 .bottom-sheet::-webkit-scrollbar{display:none}
 .bottom-sheet.open{display:block}
+
 @keyframes slideUp{from{transform:translateX(-50%) translateY(100%)}to{transform:translateX(-50%) translateY(0)}}
 .sheet-handle{width:36px;height:4px;background:#D1D1D6;border-radius:4px;margin:0 auto 20px;}
 .sheet-title{font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:16px;}
-.search-input{width:100%;background:var(--card);border:none;border-radius:14px;padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--text);outline:none;margin-bottom:12px;}
-.user-result{display:flex;align-items:center;gap:12px;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer;}
+.search-input{
+  width:100%;background:var(--card);border:none;border-radius:14px;
+  padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:15px;
+  color:var(--text);outline:none;margin-bottom:12px;
+}
+.user-result{
+  display:flex;align-items:center;gap:12px;padding:11px 4px;
+  border-bottom:1px solid var(--border);cursor:pointer;
+}
 .user-result:last-child{border-bottom:none}
-.add-btn{padding:7px 16px;background:var(--accent);border:none;border-radius:20px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:white;cursor:pointer;transition:transform .15s;}
+.add-btn{
+  padding:7px 16px;background:var(--accent);border:none;border-radius:20px;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:white;
+  cursor:pointer;transition:transform .15s;
+}
 .add-btn:active{transform:scale(.95)}
 .add-btn.sent{background:var(--card);color:var(--sub);}
 
-/* CHAT OVERLAY */
-#chat-screen{display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:100dvh;background:var(--bg);z-index:150;flex-direction:column;}
+/* ════════════════════════════════════
+   CHAT OVERLAY
+════════════════════════════════════ */
+#chat-screen{
+  display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:430px;height:100dvh;
+  background:var(--bg);z-index:150;flex-direction:column;
+}
 #chat-screen.open{display:flex}
-.chat-header{padding:12px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.96);backdrop-filter:blur(16px);flex-shrink:0;padding-top:max(12px, env(safe-area-inset-top));}
-.back-btn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--accent);font-size:22px;font-weight:300;}
+.chat-header{
+  padding:12px 18px;display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--border);
+  background:rgba(255,255,255,0.96);backdrop-filter:blur(16px);
+  flex-shrink:0;
+  padding-top:max(12px, env(safe-area-inset-top));
+}
+.back-btn{
+  width:34px;height:34px;display:flex;align-items:center;
+  justify-content:center;border-radius:50%;cursor:pointer;
+  color:var(--accent);font-size:22px;font-weight:300;
+}
 .chat-av-wrap{width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:white;}
 .chat-av-wrap img{width:100%;height:100%;object-fit:cover;}
-.chat-messages{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:2px;}
+.chat-messages{
+  flex:1;overflow-y:auto;padding:16px 18px;
+  display:flex;flex-direction:column;gap:2px;
+}
 .chat-messages::-webkit-scrollbar{display:none}
 .bubble-row{display:flex;align-items:flex-end;gap:8px;margin-bottom:4px;}
 .bubble-row.me{flex-direction:row-reverse;}
 .bubble-av{width:28px;height:28px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;overflow:hidden;}
 .bubble-av img{width:100%;height:100%;object-fit:cover;}
 .bubble-av.hidden{visibility:hidden;}
-.bubble{max-width:72%;font-size:14px;line-height:1.55;word-break:break-word;padding:10px 14px;border-radius:18px;}
+.bubble{
+  max-width:72%;font-size:14px;line-height:1.55;
+  word-break:break-word;padding:10px 14px;border-radius:18px;
+}
 .bubble.them{background:#F2F2F7;color:var(--text);border-bottom-left-radius:4px;}
 .bubble.me{background:linear-gradient(135deg,#FF6B00,#FF9500);color:white;border-bottom-right-radius:4px;}
 .bubble-time{font-size:10px;color:var(--sub);padding:2px 4px;align-self:flex-end;flex-shrink:0;}
-.chat-input-bar{padding:10px 16px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);background:rgba(255,255,255,0.96);backdrop-filter:blur(16px);flex-shrink:0;padding-bottom:max(10px, env(safe-area-inset-bottom));}
-.chat-input{flex:1;background:var(--card);border:none;border-radius:22px;padding:11px 16px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;color:var(--text);}
-.send-btn{width:40px;height:40px;background:linear-gradient(135deg,#FF6B00,#FF9500);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(255,107,0,0.35);flex-shrink:0;}
+
+.chat-input-bar{
+  padding:10px 16px;display:flex;align-items:center;gap:10px;
+  border-top:1px solid var(--border);
+  background:rgba(255,255,255,0.96);backdrop-filter:blur(16px);
+  flex-shrink:0;
+  padding-bottom:max(10px, env(safe-area-inset-bottom));
+}
+.chat-input{
+  flex:1;background:var(--card);border:none;border-radius:22px;
+  padding:11px 16px;font-family:'DM Sans',sans-serif;font-size:14px;
+  outline:none;color:var(--text);
+}
+.send-btn{
+  width:40px;height:40px;background:linear-gradient(135deg,#FF6B00,#FF9500);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;box-shadow:0 4px 12px rgba(255,107,0,0.35);flex-shrink:0;
+}
 .typing-indicator{padding:8px 18px;display:none;align-items:center;gap:8px;}
 .typing-indicator.show{display:flex}
 .typing-dots{display:flex;gap:4px;align-items:center;background:#F2F2F7;padding:10px 14px;border-radius:18px;border-bottom-left-radius:4px;}
@@ -205,37 +320,109 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 .t-dot:nth-child(2){animation-delay:.2s}.t-dot:nth-child(3){animation-delay:.4s}
 @keyframes td{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
 
-/* PROFILE */
-.profile-hero{background:linear-gradient(155deg,#1C1C1E,#2C2C2E);border-radius:0 0 32px 32px;padding:20px 22px 28px;margin-bottom:18px;position:relative;overflow:hidden;}
+/* ════════════════════════════════════
+   PROFILE
+════════════════════════════════════ */
+.profile-hero{
+  background:linear-gradient(155deg,#1C1C1E,#2C2C2E);
+  border-radius:0 0 32px 32px;padding:20px 22px 28px;
+  margin-bottom:18px;position:relative;overflow:hidden;
+}
 .profile-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,0,0.16) 0%,transparent 70%)}
-.profile-avatar-lg{width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(255,107,0,0.32);margin-bottom:12px;border:3px solid rgba(255,255,255,0.2);position:relative;overflow:hidden;cursor:pointer;}
+.profile-avatar-lg{
+  width:82px;height:82px;border-radius:50%;
+  background:linear-gradient(135deg,#FF6B00,#FF9500);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 24px rgba(255,107,0,0.32);
+  margin-bottom:12px;border:3px solid rgba(255,255,255,0.2);
+  position:relative;overflow:hidden;cursor:pointer;
+}
 .profile-avatar-lg img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
-.profile-avatar-lg .cam-overlay{position:absolute;bottom:0;left:0;right:0;height:30px;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;}
+.profile-avatar-lg .cam-overlay{
+  position:absolute;bottom:0;left:0;right:0;height:30px;
+  background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;
+}
 .profile-name{font-family:'DM Serif Display',serif;font-size:23px;color:white}
 .profile-email{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px}
 .profile-info-row{display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap;}
 .profile-level{font-size:11px;color:var(--accent);font-weight:600;letter-spacing:1px;}
-.zodiac-badge{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.1);border-radius:20px;padding:3px 10px;font-size:12px;color:rgba(255,255,255,0.8);}
+.zodiac-badge{
+  display:flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,0.1);border-radius:20px;
+  padding:3px 10px;font-size:12px;color:rgba(255,255,255,0.8);
+}
 .profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
 .stat-box{background:rgba(255,255,255,0.07);border-radius:14px;padding:10px 8px;text-align:center}
 .stat-val{font-size:18px;font-weight:600;color:white;display:flex;align-items:center;justify-content:center;gap:4px}
 .stat-label{font-size:10px;color:rgba(255,255,255,0.45);margin-top:2px}
 
-/* MODAL */
-.modal-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;z-index:300;background:rgba(0,0,0,0.5);display:none;}
+/* ═══════════════════════════════════
+   MODAL — Düzeltildi
+   Backdrop ayrı, sheet ayrı
+═══════════════════════════════════ */
+.modal-backdrop{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  z-index:300;
+  background:rgba(0,0,0,0.5);
+  display:none;
+}
 .modal-backdrop.open{display:block}
-.modal-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:white;border-radius:24px 24px 0 0;padding:24px 22px;padding-bottom:calc(24px + var(--safe-bottom));max-height:92vh;overflow-y:auto;z-index:301;display:none;animation:slideUp .3s cubic-bezier(.4,0,.2,1);}
+
+.modal-sheet{
+  position:fixed;
+  bottom:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:100%;
+  max-width:430px;
+  background:white;
+  border-radius:24px 24px 0 0;
+  padding:24px 22px;
+  padding-bottom:calc(24px + var(--safe-bottom));
+  max-height:92vh;
+  overflow-y:auto;
+  z-index:301;
+  display:none;
+  animation:slideUp .3s cubic-bezier(.4,0,.2,1);
+}
 .modal-sheet::-webkit-scrollbar{display:none}
 .modal-sheet.open{display:block}
-.modal-input{width:100%;background:var(--card);border:1.5px solid transparent;border-radius:14px;padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--text);outline:none;margin-bottom:12px;transition:border-color .2s;}
+
+.modal-input{
+  width:100%;background:var(--card);border:1.5px solid transparent;
+  border-radius:14px;padding:13px 16px;font-family:'DM Sans',sans-serif;
+  font-size:15px;color:var(--text);outline:none;margin-bottom:12px;
+  transition:border-color .2s;
+}
 .modal-input:focus{border-color:var(--accent)}
 .modal-label{font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;}
-.modal-btn{width:100%;padding:15px;background:linear-gradient(135deg,#FF6B00,#FF9500);border:none;border-radius:14px;color:white;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(255,107,0,0.3);margin-top:6px;}
-.modal-btn-cancel{width:100%;padding:13px;background:var(--card);border:none;border-radius:14px;color:var(--sub);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;margin-top:8px;}
-.profile-photo-picker{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
-.photo-preview{width:70px;height:70px;border-radius:50%;background:var(--card);border:2px dashed #D1D1D6;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0;}
+.modal-btn{
+  width:100%;padding:15px;background:linear-gradient(135deg,#FF6B00,#FF9500);
+  border:none;border-radius:14px;color:white;font-family:'DM Sans',sans-serif;
+  font-size:15px;font-weight:600;cursor:pointer;
+  box-shadow:0 6px 20px rgba(255,107,0,0.3);margin-top:6px;
+}
+.modal-btn-cancel{
+  width:100%;padding:13px;background:var(--card);
+  border:none;border-radius:14px;color:var(--sub);font-family:'DM Sans',sans-serif;
+  font-size:15px;font-weight:500;cursor:pointer;margin-top:8px;
+}
+.profile-photo-picker{
+  display:flex;align-items:center;gap:14px;margin-bottom:20px;
+}
+.photo-preview{
+  width:70px;height:70px;border-radius:50%;
+  background:var(--card);border:2px dashed #D1D1D6;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;overflow:hidden;flex-shrink:0;
+}
 .photo-preview img{width:100%;height:100%;object-fit:cover;}
-.photo-pick-btn{padding:9px 18px;background:rgba(255,107,0,0.1);border:none;border-radius:12px;color:var(--accent);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+.photo-pick-btn{
+  padding:9px 18px;background:rgba(255,107,0,0.1);border:none;
+  border-radius:12px;color:var(--accent);font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:600;cursor:pointer;
+}
 
 /* Shop */
 .shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
@@ -285,7 +472,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 @keyframes eq1{from{height:4px}to{height:14px}}@keyframes eq2{from{height:8px}to{height:6px}}@keyframes eq3{from{height:12px}to{height:4px}}
 .upload-zone{border:2px dashed rgba(175,82,222,0.4);border-radius:16px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px}
 .upload-zone:hover{border-color:#AF52DE;background:rgba(175,82,222,0.05)}
-.mini-player{position:fixed;bottom:calc(var(--nav-height) + var(--safe-bottom) + 4px);left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:406px;background:rgba(28,28,30,0.96);backdrop-filter:blur(20px);border-radius:16px;padding:10px 16px;display:none;align-items:center;gap:12px;z-index:95;box-shadow:0 -4px 20px rgba(0,0,0,0.2);}
+.mini-player{
+  position:fixed;
+  bottom:calc(var(--nav-height) + var(--safe-bottom) + 4px);
+  left:50%;transform:translateX(-50%);
+  width:calc(100% - 24px);max-width:406px;
+  background:rgba(28,28,30,0.96);backdrop-filter:blur(20px);
+  border-radius:16px;padding:10px 16px;display:none;align-items:center;gap:12px;
+  z-index:95;box-shadow:0 -4px 20px rgba(0,0,0,0.2);
+}
 .mini-player.visible{display:flex}
 .mini-art{width:36px;height:36px;border-radius:8px;flex-shrink:0;overflow:hidden}
 .mini-info{flex:1;min-width:0}
@@ -316,6 +511,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 .home-header{padding:0 18px 4px;display:flex;justify-content:space-between;align-items:center}
 .toast{position:fixed;bottom:calc(var(--nav-height) + var(--safe-bottom) + 16px);left:50%;transform:translateX(-50%) translateY(16px);background:#1C1C1E;color:white;padding:10px 20px;border-radius:30px;font-size:13px;font-weight:500;opacity:0;transition:all .28s;z-index:500;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
 .coin-fly{position:fixed;z-index:600;pointer-events:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFD60A,#FF9500);box-shadow:0 2px 8px rgba(255,149,0,0.6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;}
 @keyframes coinFly{0%{transform:scale(1) translate(0,0);opacity:1}60%{transform:scale(1.3) translate(var(--fly-x),var(--fly-y));opacity:.9}100%{transform:scale(0.3) translate(var(--end-x),var(--end-y));opacity:0}}
 @keyframes badgePop{0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(.92)}80%{transform:scale(1.1)}100%{transform:scale(1)}}
@@ -333,17 +529,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 .pill-row::-webkit-scrollbar{display:none}
 .pill{display:inline-flex;align-items:center;background:var(--card);border-radius:30px;padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);white-space:nowrap}
 .pill.active-pill{background:var(--text);color:white;border-color:var(--text)}
+
+/* Boş durum — emojisiz SVG ikonlu */
 .empty-state{text-align:center;padding:48px 24px;color:var(--sub)}
 .empty-state-icon{margin-bottom:16px;display:flex;justify-content:center;}
 .empty-state-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px;}
 .empty-state-sub{font-size:13px;line-height:1.5;}
 </style>
-
 </head>
 <body>
 
 <!-- ══ SVG DEFS ══ -->
-
 <svg width="0" height="0" style="position:absolute;overflow:hidden">
 <defs>
 <symbol id="s-coin" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="#FF9500"/><circle cx="16" cy="16" r="9.5" fill="#FFBF00" opacity=".55"/><text x="16" y="20.5" text-anchor="middle" font-size="9" font-weight="800" fill="white" font-family="sans-serif" opacity=".9">A</text></symbol>
@@ -351,12 +547,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <symbol id="s-brain" viewBox="0 0 36 36"><path d="M13 10 C10 10 7 12.5 7 16 C7 17.8 7.7 19.4 8.8 20.5 C7.8 21.4 7 22.8 7 24.3 C7 27 9.2 29 12 29 L12.5 29 C13.2 30.5 14.5 31.5 16.2 31.5 C17.2 31.5 18.1 31.1 18.8 30.5 C19.4 31.1 20.3 31.5 21.3 31.5 C23.4 31.5 25 29.8 25 27.8 L25 27.5 C27.2 26.5 28.8 24.4 28.8 22 C28.8 21 28.5 20 28 19.2 C29.2 18 30 16.4 30 14.5 C30 11.4 27.5 9 24.4 9 C23.5 9 22.7 9.2 22 9.6 C21 9.2 20 9 19 9 C16.5 9 14.4 9.8 13 10Z" fill="none" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="18" y1="13" x2="18" y2="24" stroke="#AF52DE" stroke-width="1.5" stroke-linecap="round"/><line x1="13.5" y1="17" x2="22.5" y2="17" stroke="#AF52DE" stroke-width="1.5" stroke-linecap="round"/><circle cx="18" cy="12" r="2" fill="#AF52DE"/></symbol>
 <symbol id="s-zap" viewBox="0 0 32 36"><path d="M21 4 L10 20 H18.5 L11 34 L27 14.5 H18.5 Z" fill="#FFD60A" stroke="#FF9500" stroke-width="1.3" stroke-linejoin="round"/></symbol>
 <symbol id="s-leaf" viewBox="0 0 32 32"><line x1="16" y1="28" x2="16" y2="13" stroke="white" stroke-width="2.2" stroke-linecap="round"/><path d="M16 26 C16 26 8 23 6 15 C6 15 13 10 20 16 C21 18 21 23 16 26Z" fill="white" opacity=".92"/><path d="M16 19 C16 19 22 16 25 9 C25 9 20 7 15 13 C14 15 14 18 16 19Z" fill="white" opacity=".62"/></symbol>
+<!-- Nav ikonları -->
 <symbol id="n-home" viewBox="0 0 28 28"><path d="M4 13.5 L14 4 L24 13.5 V24 H18.5 V17.5 H9.5 V24 H4 Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="n-chat" viewBox="0 0 28 28"><path d="M4 5 H24 C25.1 5 26 5.9 26 7 V17.5 C26 18.6 25.1 19.5 24 19.5 H8.5 L3 25 V7 C3 5.9 3.9 5 5 5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><line x1="9" y1="11" x2="19" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
 <symbol id="n-game" viewBox="0 0 28 28"><rect x="3" y="9" width="22" height="13" rx="5" fill="none" stroke="currentColor" stroke-width="1.9"/><line x1="9" y1="14.5" x2="9" y2="18.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><line x1="7" y1="16.5" x2="11" y2="16.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="19.5" cy="13.5" r="1.3" fill="currentColor"/><circle cx="22.5" cy="16.5" r="1.3" fill="currentColor"/></symbol>
 <symbol id="n-music" viewBox="0 0 28 28"><path d="M10 20 L10 8 L22 5 L22 17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="20" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="20" cy="17" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/></symbol>
 <symbol id="n-steps" viewBox="0 0 28 28"><path d="M14 23 C14 23 4 16 4 9.5 C4 7 6 5 8.5 5 C10.5 5 12 6.2 14 8 C16 6.2 17.5 5 19.5 5 C22 5 24 7 24 9.5 C24 16 14 23 14 23Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><polyline points="4,13 8,13 10,9 12,17 14.5,11 16.5,15 18,13 24,13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="n-person" viewBox="0 0 28 28"><circle cx="14" cy="9" r="4.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M5 26 C5 21.2 9.1 17.5 14 17.5 C18.9 17.5 23 21.2 23 26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+<!-- Oyun & Eşya ikonları -->
 <symbol id="s-puzzle" viewBox="0 0 40 40"><path d="M8 8 h9 v-2 a3 3 0 0 1 6 0 V8 h9 v9 h2 a3 3 0 0 1 0 6 H32 v9 H23 v-2 a3 3 0 0 0-6 0 V32 H8 V23 H6 a3 3 0 0 1 0-6 H8 Z" fill="none" stroke="#5B2D91" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="s-cards" viewBox="0 0 40 40"><rect x="5" y="13" width="20" height="24" rx="3.5" fill="#FFE8D0" stroke="#8C4A00" stroke-width="1.8"/><rect x="12" y="6" width="20" height="24" rx="3.5" fill="#FFCFA0" stroke="#8C4A00" stroke-width="1.8"/></symbol>
 <symbol id="s-word" viewBox="0 0 40 40"><rect x="4" y="6" width="32" height="28" rx="5" fill="#EDE0FF" stroke="#5B2D91" stroke-width="1.8"/><text x="13" y="27" font-size="17" font-weight="800" fill="#5B2D91" font-family="sans-serif">Aa</text></symbol>
@@ -366,17 +564,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <symbol id="s-meditate" viewBox="0 0 28 28"><circle cx="14" cy="7" r="3" fill="#007AFF" opacity=".85"/><path d="M10 11.5 C8 14 8 18 10 21 L12 21" stroke="#007AFF" stroke-width="1.9" stroke-linecap="round" fill="none"/><path d="M18 11.5 C20 14 20 18 18 21 L16 21" stroke="#007AFF" stroke-width="1.9" stroke-linecap="round" fill="none"/><path d="M12 21 Q14 23 16 21" stroke="#007AFF" stroke-width="1.9" stroke-linecap="round" fill="none"/></symbol>
 <symbol id="s-msgtask" viewBox="0 0 28 28"><path d="M4 5.5 H24 C25.1 5.5 26 6.4 26 7.5 V17 C26 18.1 25.1 19 24 19 H9 L4 24 V7.5 C4 6.4 4.9 5.5 6 5.5Z" fill="none" stroke="#34C759" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 <symbol id="s-donetask" viewBox="0 0 28 28"><circle cx="14" cy="14" r="11" fill="#FF6B00" opacity=".13"/><path d="M9 14 L12.5 17.5 L19 11" stroke="#FF6B00" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+<!-- Mağaza ikonları -->
 <symbol id="sh-dragon" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="#F0E0FF"/><ellipse cx="26" cy="28" rx="14" ry="11" fill="#AF52DE"/><circle cx="20.5" cy="25" r="3.5" fill="white"/><circle cx="31.5" cy="25" r="3.5" fill="white"/><circle cx="21.5" cy="25.5" r="2" fill="#4A1080"/><circle cx="32.5" cy="25.5" r="2" fill="#4A1080"/></symbol>
 <symbol id="sh-floral" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="#FFF0F5"/><ellipse cx="26" cy="12" rx="5.5" ry="7.5" fill="#FF2D55" opacity=".8"/><ellipse cx="26" cy="40" rx="5.5" ry="7.5" fill="#FF2D55" opacity=".8"/><circle cx="26" cy="26" r="8" fill="#FF2D55"/></symbol>
 <symbol id="sh-night" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="#1C1C2E"/><path d="M33 14 C24 14 17 21 17 30 C17 36.5 21 41.5 27.5 43 C18.5 42 11 34.5 11 25.5 C11 16 18.5 8.5 28 8.5 C29.5 8.5 31 8.8 33 10 Z" fill="#FFD60A"/></symbol>
 <symbol id="sh-star" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="#FFF8D0"/><polygon points="26,8 29.8,20 42,20 32.2,27.2 35.5,39 26,32 16.5,39 19.8,27.2 10,20 22.2,20" fill="#FFD60A"/></symbol>
+<!-- Boş durum ikonları (emojisiz) -->
 <symbol id="ic-no-msg" viewBox="0 0 64 64"><path d="M8 10 H56 C58.2 10 60 11.8 60 14 V42 C60 44.2 58.2 46 56 46 H20 L8 58 V14 C8 11.8 9.8 10 12 10Z" fill="none" stroke="#D1D1D6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="28" r="3" fill="#D1D1D6"/><circle cx="32" cy="28" r="3" fill="#D1D1D6"/><circle cx="40" cy="28" r="3" fill="#D1D1D6"/></symbol>
 <symbol id="ic-no-req" viewBox="0 0 64 64"><circle cx="32" cy="22" r="10" fill="none" stroke="#D1D1D6" stroke-width="3"/><path d="M14 54 C14 44 22 37 32 37 C42 37 50 44 50 54" fill="none" stroke="#D1D1D6" stroke-width="3" stroke-linecap="round"/><line x1="44" y1="14" x2="44" y2="26" stroke="#D1D1D6" stroke-width="3" stroke-linecap="round"/><line x1="38" y1="20" x2="50" y2="20" stroke="#D1D1D6" stroke-width="3" stroke-linecap="round"/></symbol>
 </defs>
 </svg>
 
 <!-- ── AUTH ── -->
-
 <div class="auth-screen show" id="auth-screen">
   <div class="auth-logo">aur<span>a</span></div>
   <div class="auth-sub">Arkadaşlarınla bağlan, büyü</div>
@@ -406,11 +605,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ── TOAST ── -->
-
 <div class="toast" id="toast"></div>
 
 <!-- ══ CHAT OVERLAY ══ -->
-
 <div id="chat-screen">
   <div class="statusbar"><span class="status-clock">9:41</span><span style="color:var(--sub)">◉◉◉</span></div>
   <div class="chat-header">
@@ -423,7 +620,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
         <span id="chat-status-el">çevrimiçi</span>
       </div>
     </div>
-    <div class="fb-indicator"><div class="fb-dot" id="chat-fb-dot"></div></div>
+    <div class="fb-indicator">
+      <div class="fb-dot" id="chat-fb-dot"></div>
+    </div>
   </div>
   <div class="chat-messages" id="chat-msgs"></div>
   <div class="typing-indicator" id="typing-wrap">
@@ -438,7 +637,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ══ HOME ══ -->
-
 <div class="screen active" id="screen-home">
   <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="home-header">
@@ -471,6 +669,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div>
     </div>
+
     <div class="section-title">Günün Sorusu</div>
     <div class="q-card">
       <div class="q-label"><svg width="18" height="18"><use href="#s-brain"/></svg>Genel Kültür</div>
@@ -482,6 +681,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
         <div class="q-option" onclick="answerQ(this,false)">Arktik</div>
       </div>
     </div>
+
     <div class="section-title">Görevler</div>
     <div class="card" style="padding:16px 20px;">
       <div class="task-item" id="task1" onclick="completeTask('task1',20)">
@@ -503,10 +703,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
         <div class="task-reward-badge"><svg width="13" height="13"><use href="#s-coin"/></svg>25</div>
       </div>
     </div>
+
     <div class="section-title">Arkadaşlar</div>
     <div class="card" style="padding:14px 20px;" id="home-friends-card">
       <div style="text-align:center;padding:16px 0;color:var(--sub);font-size:13px;">Arkadaş ekle ve aktivitelerini takip et</div>
     </div>
+
     <div class="card" style="display:flex;align-items:center;gap:14px;">
       <svg width="54" height="54" style="flex-shrink:0"><use href="#s-flame"/></svg>
       <div>
@@ -519,7 +721,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ══ MESSAGES ══ -->
-
 <div class="screen" id="screen-messages">
   <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="msg-screen-header">
@@ -538,13 +739,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
     </div>
   </div>
   <div style="flex:1;overflow-y:auto;" id="msg-content">
-    <div id="chats-tab"><div id="friends-list"></div></div>
-    <div id="requests-tab" style="display:none;"><div id="requests-list"></div></div>
+    <div id="chats-tab">
+      <div id="friends-list"></div>
+    </div>
+    <div id="requests-tab" style="display:none;">
+      <div id="requests-list"></div>
+    </div>
   </div>
 </div>
 
 <!-- ══ GAMES ══ -->
-
 <div class="screen" id="screen-games">
   <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="scroll-area">
@@ -577,7 +781,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ══ AKTİVİTE ══ -->
-
 <div class="screen" id="screen-steps">
   <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="scroll-area">
@@ -593,7 +796,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
       <div style="text-align:center;"><svg width="64" height="64" class="ring-svg"><circle class="ring-track" cx="32" cy="32" r="25"/><circle class="ring-fill" cx="32" cy="32" r="25" stroke="#007AFF" stroke-dasharray="157" stroke-dashoffset="78"/></svg><div style="font-size:12px;font-weight:600;margin-top:4px;">Kalori</div><div style="font-size:10px;color:var(--sub);" id="s-cal-val">-</div></div>
       <div style="text-align:center;"><svg width="64" height="64" class="ring-svg"><circle class="ring-track" cx="32" cy="32" r="25"/><circle class="ring-fill" cx="32" cy="32" r="25" stroke="#FF9500" stroke-dasharray="157" stroke-dashoffset="110"/></svg><div style="font-size:12px;font-weight:600;margin-top:4px;">Aktif Süre</div><div style="font-size:10px;color:var(--sub);" id="s-active-val">-</div></div>
     </div>
-    <div style="margin-bottom:8px;"><div style="font-size:12px;color:var(--sub);margin-bottom:8px;">Sağlık verileri gerçek cihaz bağlantısı gerektirir. Simüle edilen veriler gösteriliyor.</div></div>
+    <div style="margin-bottom:8px;">
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px;">Sağlık verileri gerçek cihaz bağlantısı gerektirir. Simüle edilen veriler gösteriliyor.</div>
+    </div>
     <div class="section-title">Bu Hafta</div>
     <div class="card">
       <div class="week-chart" id="week-chart"></div>
@@ -607,7 +812,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ══ MÜZİK ══ -->
-
 <div class="screen" id="screen-music">
   <div class="statusbar"><span class="status-clock">9:41</span><span style="color:var(--sub)">◉◉◉</span></div>
   <div class="music-hero">
@@ -637,12 +841,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
       <input type="file" id="music-upload" accept="audio/*" multiple style="display:none" onchange="uploadMusic(event)">
     </div>
     <div class="section-title">Kütüphane</div>
-    <div id="song-list"><div style="text-align:center;padding:32px 0;color:var(--sub);font-size:13px;">Henüz şarkı yok — yukarıdan ekle</div></div>
+    <div id="song-list">
+      <div style="text-align:center;padding:32px 0;color:var(--sub);font-size:13px;">Henüz şarkı yok — yukarıdan ekle</div>
+    </div>
   </div>
 </div>
 
 <!-- ══ PROFİL ══ -->
-
 <div class="screen" id="screen-profile">
   <div class="statusbar" style="color:rgba(255,255,255,0.4);"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="profile-hero">
@@ -650,7 +855,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
       <div>
         <div class="profile-avatar-lg" id="profile-avatar-wrap" onclick="openEditProfile()">
           <span id="profile-avatar-initial" style="font-size:30px;font-weight:700;color:white;">A</span>
-          <div class="cam-overlay"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+          <div class="cam-overlay">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
         </div>
         <div class="profile-name" id="profile-display-name">...</div>
         <div class="profile-email" id="profile-email">...</div>
@@ -697,23 +904,39 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
         <div style="flex:1;">Çıkış Yap</div>
       </div>
     </div>
-    <div style="text-align:center;color:var(--sub);font-size:11px;padding:18px 0 8px;">Aura v2.3 · Firebase Auth ✓</div>
+    <div style="text-align:center;color:var(--sub);font-size:11px;padding:18px 0 8px;">Aura v2.2 · Firebase Auth</div>
   </div>
 </div>
 
 <!-- ══ BOTTOM NAV ══ -->
-
 <nav class="bottom-nav">
-  <div class="nav-item active" id="nav-home" onclick="goTo('home')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-home"/></svg><span class="nav-label">Ana Sayfa</span></div>
-  <div class="nav-item" id="nav-messages" onclick="goTo('messages')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-chat"/></svg><span class="nav-label">Mesajlar</span></div>
-  <div class="nav-item" id="nav-games" onclick="goTo('games')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-game"/></svg><span class="nav-label">Oyunlar</span></div>
-  <div class="nav-item" id="nav-steps" onclick="goTo('steps')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-steps"/></svg><span class="nav-label">Aktivite</span></div>
-  <div class="nav-item" id="nav-music" onclick="goTo('music')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-music"/></svg><span class="nav-label">Müzik</span></div>
-  <div class="nav-item" id="nav-profile" onclick="goTo('profile')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-person"/></svg><span class="nav-label">Profil</span></div>
+  <div class="nav-item active" id="nav-home" onclick="goTo('home')">
+    <svg class="ni" viewBox="0 0 28 28"><use href="#n-home"/></svg>
+    <span class="nav-label">Ana Sayfa</span>
+  </div>
+  <div class="nav-item" id="nav-messages" onclick="goTo('messages')">
+    <svg class="ni" viewBox="0 0 28 28"><use href="#n-chat"/></svg>
+    <span class="nav-label">Mesajlar</span>
+  </div>
+  <div class="nav-item" id="nav-games" onclick="goTo('games')">
+    <svg class="ni" viewBox="0 0 28 28"><use href="#n-game"/></svg>
+    <span class="nav-label">Oyunlar</span>
+  </div>
+  <div class="nav-item" id="nav-steps" onclick="goTo('steps')">
+    <svg class="ni" viewBox="0 0 28 28"><use href="#n-steps"/></svg>
+    <span class="nav-label">Aktivite</span>
+  </div>
+  <div class="nav-item" id="nav-music" onclick="goTo('music')">
+    <svg class="ni" viewBox="0 0 28 28"><use href="#n-music"/></svg>
+    <span class="nav-label">Müzik</span>
+  </div>
+  <div class="nav-item" id="nav-profile" onclick="goTo('profile')">
+    <svg class="ni" viewBox="0 0 28 28"><use href="#n-person"/></svg>
+    <span class="nav-label">Profil</span>
+  </div>
 </nav>
 
 <!-- ══ MİNİ PLAYER ══ -->
-
 <div class="mini-player" id="mini-player">
   <div class="mini-art" id="mini-art"></div>
   <div class="mini-info"><div class="mini-title" id="mini-title">--</div><div class="mini-artist" id="mini-artist">--</div></div>
@@ -724,8 +947,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
   </div>
 </div>
 
-<!-- ══ PROFİL DÜZENLEME ══ -->
-
+<!-- ══════════════════════════════════════
+     PROFİL DÜZENLEME — Ayrı backdrop + sheet
+══════════════════════════════════════ -->
 <div class="modal-backdrop" id="edit-profile-backdrop" onclick="closeEditProfile()"></div>
 <div class="modal-sheet" id="edit-profile-modal">
   <div class="sheet-handle"></div>
@@ -759,8 +983,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
   <button class="modal-btn-cancel" onclick="closeEditProfile()">Vazgeç</button>
 </div>
 
-<!-- ══ HEDEF AYARI ══ -->
-
+<!-- ══════════════════════════════════════
+     HEDEF AYARI — Ayrı backdrop + sheet
+══════════════════════════════════════ -->
 <div class="modal-backdrop" id="goal-backdrop" onclick="closeGoalModal()"></div>
 <div class="modal-sheet" id="goal-modal">
   <div class="sheet-handle"></div>
@@ -777,8 +1002,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
   <button class="modal-btn-cancel" onclick="closeGoalModal()">Vazgeç</button>
 </div>
 
-<!-- ══ ARKADAŞ EKLE ══ -->
-
+<!-- ══════════════════════════════════════
+     ARKADAŞ EKLE — Ayrı backdrop + sheet
+══════════════════════════════════════ -->
 <div class="sheet-backdrop" id="add-friend-backdrop" onclick="closeAddFriend()"></div>
 <div class="bottom-sheet" id="add-friend-sheet">
   <div class="sheet-handle"></div>
@@ -790,7 +1016,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 
 <script>
 // ════════════════════════════════════════════
-// AURA APP v2.3 — Tüm hatalar düzeltildi
+// AURA APP v2.2
 // ════════════════════════════════════════════
 
 let coins = 340;
@@ -800,7 +1026,6 @@ let dmListener = null;
 let activeDMUserId = null;
 let userProfile = {};
 let pendingPhotoDataUrl = null;
-let searchTimer = null; // FIX: searchTimer tanımsız değişken hatası düzeltildi
 
 // ── Haptic ──
 const h = {
@@ -920,7 +1145,7 @@ function buyItem(name, price){
 }
 
 // ════════════════════════════════════════════
-// AUTH — FIX: Tüm window._auth ve window._db referansları düzeltildi
+// AUTH
 // ════════════════════════════════════════════
 function switchTab(t){
   document.getElementById('tab-login').classList.toggle('active', t==='login');
@@ -939,74 +1164,53 @@ function authError(form, code){
     'auth/weak-password':'Şifre en az 6 karakter olmalı',
     'auth/user-not-found':'Kullanıcı bulunamadı',
     'auth/wrong-password':'Hatalı şifre',
-    'auth/invalid-credential':'E-posta veya şifre hatalı',
-    'auth/too-many-requests':'Çok fazla deneme. Lütfen bekleyin.',
-    'auth/network-request-failed':'İnternet bağlantısı hatası'
+    'auth/invalid-credential':'E-posta veya şifre hatalı'
   };
-  document.getElementById(form+'-err').textContent = tr[code]||('Hata: '+code);
+  document.getElementById(form+'-err').textContent = tr[code]||code;
 }
-
 async function registerUser(){
-  const name  = document.getElementById('reg-name').value.trim();
+  const name = document.getElementById('reg-name').value.trim();
   const email = document.getElementById('reg-email').value.trim();
-  const pass  = document.getElementById('reg-pass').value;
-  const errEl = document.getElementById('reg-err');
-  if(!name){ errEl.textContent='İsim giriniz'; return; }
-  if(!email||!pass){ errEl.textContent='Tüm alanları doldurunuz'; return; }
-  if(!window._fbReady || !window._auth){ errEl.textContent='Sayfa yükleniyor, lütfen bekleyin...'; return; }
-  setLoading('reg', true); errEl.textContent='';
+  const pass = document.getElementById('reg-pass').value;
+  if(!name){ document.getElementById('reg-err').textContent='İsim giriniz'; return; }
+  if(!email||!pass){ document.getElementById('reg-err').textContent='Tüm alanları doldurunuz'; return; }
+  setLoading('reg', true);
   try{
-    const cred = await window._auth.createUserWithEmailAndPassword(email, pass);
-    await cred.user.updateProfile({displayName: name});
-    await window._db.ref('users/'+cred.user.uid).set({
+    const {createUserWithEmailAndPassword, updateProfile, auth, db, ref, set} = window._fb;
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(cred.user, {displayName: name});
+    await set(ref(db, 'users/'+cred.user.uid), {
       name, email,
       username: name.toLowerCase().replace(/\s+/g,'_') + '_' + Math.floor(Math.random()*1000),
       createdAt: Date.now()
     });
-    errEl.textContent = '';
-  }catch(e){
-    setLoading('reg',false);
-    authError('reg', e.code);
-  }
+    document.getElementById('reg-err').textContent = '';
+  }catch(e){ setLoading('reg',false); authError('reg',e.code); }
 }
-
 async function loginUser(){
   const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
-  const errEl = document.getElementById('login-err');
-  if(!email||!pass){ errEl.textContent='Tüm alanları doldurunuz'; return; }
-  // FIX: Firebase hazır değilse kullanıcıya net mesaj ver
-  if(!window._fbReady || !window._auth){
-    errEl.textContent='Bağlantı kuruluyor, lütfen bekleyin...';
-    // 2 saniye bekleyip tekrar dene
-    setTimeout(()=>{
-      if(window._fbReady && window._auth){ errEl.textContent='Hazır! Tekrar deneyin.'; }
-    }, 2000);
-    return;
-  }
-  setLoading('login', true); errEl.textContent='';
+  const pass = document.getElementById('login-pass').value;
+  if(!email||!pass){ document.getElementById('login-err').textContent='Tüm alanları doldurunuz'; return; }
+  setLoading('login', true);
   try{
-    await window._auth.signInWithEmailAndPassword(email, pass);
-  }catch(e){
-    setLoading('login',false);
-    authError('login', e.code);
-  }
+    const {signInWithEmailAndPassword, auth} = window._fb;
+    await signInWithEmailAndPassword(auth, email, pass);
+    document.getElementById('login-err').textContent = '';
+  }catch(e){ setLoading('login',false); authError('login',e.code); }
 }
-
 async function logoutUser(){
   if(!confirm('Çıkış yapmak istediğinize emin misiniz?')) return;
   if(dmListener){ dmListener(); dmListener=null; }
-  if(window._auth) await window._auth.signOut();
+  await window._fb.signOut(window._fb.auth);
 }
 
-// FIX: auth-changed event'i düzgün çalışıyor çünkü Firebase artık doğru başlatılıyor
 document.addEventListener('auth-changed', async(e)=>{
   const user = e.detail.user;
   if(user){
     document.getElementById('auth-screen').classList.remove('show');
     await loadUserProfile(user);
     updateFbStatus(true);
-    showToast('Hoş geldin ' + (user.displayName||'') + '!');
+    showToast('Hoş geldin!');
     renderHealthData();
   } else {
     document.getElementById('auth-screen').classList.add('show');
@@ -1023,10 +1227,11 @@ function updateFbStatus(on){
 }
 
 async function loadUserProfile(user){
+  const {db, ref, get} = window._fb;
   try{
-    const snap = await window._db.ref('users/'+user.uid).once('value');
+    const snap = await get(ref(db,'users/'+user.uid));
     if(snap.exists()) userProfile = snap.val();
-  }catch(e){ console.error('Profil yükleme hatası:', e); }
+  }catch(e){}
 
   const name = user.displayName || userProfile.name || user.email.split('@')[0];
   const initial = name.charAt(0).toUpperCase();
@@ -1044,12 +1249,12 @@ async function loadUserProfile(user){
 
   if(userProfile.photoDataUrl) setProfilePhoto(userProfile.photoDataUrl);
   if(userProfile.bio) document.getElementById('profile-bio-display').textContent = userProfile.bio;
-  if(userProfile.birthday){ const zodiac = getZodiac(userProfile.birthday); if(zodiac) showZodiacBadge(zodiac); }
+  if(userProfile.birthday){ const zodiac = getZodiac(userProfile.birthday); showZodiacBadge(zodiac); }
   if(userProfile.stepGoal) stepGoal = userProfile.stepGoal;
 }
 
 // ════════════════════════════════════════════
-// MODAL AÇMA/KAPAMA
+// MODAL AÇMA/KAPAMA — Düzeltildi
 // ════════════════════════════════════════════
 function openEditProfile(){
   h.tap();
@@ -1069,32 +1274,37 @@ function openEditProfile(){
     const initial = (user.displayName||'A').charAt(0).toUpperCase();
     prev.innerHTML = `<span id="edit-photo-initial" style="font-size:22px;font-weight:700;color:var(--sub);">${initial}</span>`;
   }
+
   if(userProfile.birthday) updateZodiacPreview();
   document.getElementById('edit-profile-backdrop').classList.add('open');
   document.getElementById('edit-profile-modal').classList.add('open');
 }
+
 function closeEditProfile(){
   document.getElementById('edit-profile-backdrop').classList.remove('open');
   document.getElementById('edit-profile-modal').classList.remove('open');
   pendingPhotoDataUrl = null;
 }
+
 function openGoalSetting(){
   document.getElementById('goal-input').value = userProfile.stepGoal || stepGoal;
   document.getElementById('goal-backdrop').classList.add('open');
   document.getElementById('goal-modal').classList.add('open');
 }
+
 function closeGoalModal(){
   document.getElementById('goal-backdrop').classList.remove('open');
   document.getElementById('goal-modal').classList.remove('open');
 }
+
 function openAddFriend(){
   h.tap();
   document.getElementById('add-friend-backdrop').classList.add('open');
   document.getElementById('add-friend-sheet').classList.add('open');
   document.getElementById('search-results').innerHTML = '';
-  document.getElementById('friend-search-input').value = '';
   setTimeout(()=> document.getElementById('friend-search-input').focus(), 300);
 }
+
 function closeAddFriend(){
   document.getElementById('add-friend-backdrop').classList.remove('open');
   document.getElementById('add-friend-sheet').classList.remove('open');
@@ -1112,6 +1322,7 @@ function handleProfilePhoto(e){
   };
   reader.readAsDataURL(file);
 }
+
 function setProfilePhoto(dataUrl){
   const homeAv = document.getElementById('home-avatar');
   homeAv.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
@@ -1122,26 +1333,35 @@ function setProfilePhoto(dataUrl){
 async function saveProfile(){
   const user = window._currentUser;
   if(!user) return;
-  const name     = document.getElementById('edit-name').value.trim();
+  const name = document.getElementById('edit-name').value.trim();
   const username = document.getElementById('edit-username').value.trim().replace('@','');
-  const bio      = document.getElementById('edit-bio').value.trim();
-  const city     = document.getElementById('edit-city').value.trim();
+  const bio = document.getElementById('edit-bio').value.trim();
+  const city = document.getElementById('edit-city').value.trim();
   const birthday = document.getElementById('edit-birthday').value;
+
   if(!name){ showToast('İsim boş olamaz'); return; }
+
+  const {updateProfile, auth, db, ref, set} = window._fb;
   try{
-    await user.updateProfile({displayName: name});
+    await updateProfile(user, {displayName: name});
     const profileData = { name, username, bio, city, birthday, email: user.email, updatedAt: Date.now() };
     if(pendingPhotoDataUrl) profileData.photoDataUrl = pendingPhotoDataUrl;
-    // FIX: window._db doğru referans
-    await window._db.ref('users/'+user.uid).set(profileData);
+    await set(ref(db,'users/'+user.uid), profileData);
     userProfile = {...userProfile, ...profileData};
+
     document.getElementById('profile-display-name').textContent = name;
     document.getElementById('leaderboard-me').textContent = name;
     const initial = name.charAt(0).toUpperCase();
-    if(pendingPhotoDataUrl){ setProfilePhoto(pendingPhotoDataUrl); }
-    else { ['home-avatar-initial','profile-avatar-initial'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=initial; }); }
+    if(pendingPhotoDataUrl){
+      setProfilePhoto(pendingPhotoDataUrl);
+    } else {
+      ['home-avatar-initial','profile-avatar-initial'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.textContent = initial;
+      });
+    }
     if(bio) document.getElementById('profile-bio-display').textContent = bio;
-    if(birthday){ const zodiac = getZodiac(birthday); if(zodiac) showZodiacBadge(zodiac); }
+    if(birthday){ const zodiac = getZodiac(birthday); showZodiacBadge(zodiac); }
     closeEditProfile();
     showToast('Profil güncellendi!');
     sfx.task();
@@ -1165,6 +1385,7 @@ const ZODIACS = [
   {name:'Kova',    icon:'♒',dates:'20 Oca - 18 Şub', m:[1,20], me:[2,18]},
   {name:'Balık',   icon:'♓',dates:'19 Şub - 20 Mar', m:[2,19], me:[3,20]},
 ];
+
 function getZodiac(birthday){
   if(!birthday) return null;
   const d = new Date(birthday);
@@ -1198,9 +1419,10 @@ function updateZodiacPreview(){
 }
 
 // ════════════════════════════════════════════
-// MESAJLAŞMA — FIX: window._fb.db → window._db
+// MESAJLAŞMA
 // ════════════════════════════════════════════
 let msgTab = 'chats';
+
 function showMsgTab(tab, btn){
   msgTab = tab;
   document.querySelectorAll('.msg-tab-btn').forEach(b=>b.classList.remove('active'));
@@ -1213,13 +1435,19 @@ function showMsgTab(tab, btn){
 async function loadFriendsList(){
   const user = window._currentUser;
   if(!user) return;
+  const {db, ref, get} = window._fb;
   const listEl = document.getElementById('friends-list');
   listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--sub);font-size:13px;">Yükleniyor...</div>';
+
   try{
-    // FIX: window._db kullanılıyor
-    const snap = await window._db.ref('friends/'+user.uid).once('value');
-    if(!snap.exists() || !Object.keys(snap.val()||{}).length){
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-msg"/></svg></div><div class="empty-state-title">Henüz arkadaşın yok</div><div class="empty-state-sub">Sağ üstteki + butonuna basarak arkadaş ekleyebilirsin</div></div>`;
+    const snap = await get(ref(db,'friends/'+user.uid));
+    if(!snap.exists() || !Object.keys(snap.val()).length){
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-msg"/></svg></div>
+          <div class="empty-state-title">Henüz arkadaşın yok</div>
+          <div class="empty-state-sub">Sağ üstteki + butonuna basarak arkadaş ekleyebilirsin</div>
+        </div>`;
       return;
     }
     const friends = snap.val();
@@ -1227,7 +1455,7 @@ async function loadFriendsList(){
     for(const [fuid, fdata] of Object.entries(friends)){
       if(fdata.status !== 'accepted') continue;
       const dmId = getDMId(user.uid, fuid);
-      const msgsSnap = await window._db.ref('dms/'+dmId).once('value');
+      const msgsSnap = await get(ref(db,'dms/'+dmId));
       let lastMsg = '', lastTime = '';
       if(msgsSnap.exists()){
         const msgs = Object.values(msgsSnap.val());
@@ -1241,25 +1469,34 @@ async function loadFriendsList(){
       item.className = 'friend-item';
       item.onclick = ()=> openDM(fuid, fdata.name||'Kullanıcı', color, initial, fdata.photoDataUrl||null);
       item.innerHTML = `
-        <div class="friend-av" style="background:${color};">${fdata.photoDataUrl?`<img src="${fdata.photoDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:initial}<div class="online-dot"></div></div>
-        <div class="friend-info"><div class="friend-name">${fdata.name||'Kullanıcı'}</div><div class="friend-preview">${lastMsg||'Henüz mesaj yok'}</div></div>
-        <div class="friend-meta"><span class="friend-time">${lastTime}</span></div>`;
+        <div class="friend-av" style="background:${color};">
+          ${fdata.photoDataUrl ? `<img src="${fdata.photoDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : initial}
+          <div class="online-dot"></div>
+        </div>
+        <div class="friend-info">
+          <div class="friend-name">${fdata.name||'Kullanıcı'}</div>
+          <div class="friend-preview">${lastMsg || 'Henüz mesaj yok'}</div>
+        </div>
+        <div class="friend-meta">
+          <span class="friend-time">${lastTime}</span>
+        </div>`;
       listEl.appendChild(item);
     }
     if(!listEl.children.length){
-      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-msg"/></svg></div><div class="empty-state-title">Henüz arkadaşın yok</div></div>`;
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-msg"/></svg></div><div class="empty-state-title">Henüz arkadaşın yok</div><div class="empty-state-sub">Sağ üstteki + ile arkadaş ekle</div></div>`;
     }
-  }catch(e){ console.error('Arkadaş listesi hatası:', e); }
+  }catch(e){ console.error(e); }
 }
 
 async function loadFriendRequests(){
   const user = window._currentUser;
   if(!user) return;
+  const {db, ref, get, set} = window._fb;
   const listEl = document.getElementById('requests-list');
   listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--sub);font-size:13px;">Yükleniyor...</div>';
+
   try{
-    // FIX: window._fb.db → window._db
-    const snap = await window._db.ref('friends/'+user.uid).once('value');
+    const snap = await get(ref(db,'friends/'+user.uid));
     if(!snap.exists()){
       listEl.innerHTML=`<div class="empty-state"><div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-req"/></svg></div><div class="empty-state-title">İstek yok</div></div>`;
       return;
@@ -1278,25 +1515,28 @@ async function loadFriendRequests(){
       div.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);';
       div.innerHTML = `
         <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:white;flex-shrink:0;">${initial}</div>
-        <div style="flex:1;"><div style="font-size:15px;font-weight:500;">${fdata.name||'Kullanıcı'}</div><div style="font-size:12px;color:var(--sub);">Arkadaşlık isteği gönderdi</div></div>
+        <div style="flex:1;">
+          <div style="font-size:15px;font-weight:500;">${fdata.name||'Kullanıcı'}</div>
+          <div style="font-size:12px;color:var(--sub);">Arkadaşlık isteği gönderdi</div>
+        </div>
         <div style="display:flex;gap:6px;">
           <button onclick="acceptFriend('${fuid}','${(fdata.name||'').replace(/'/g,"\\'")}',this)" style="padding:7px 13px;background:var(--accent);border:none;border-radius:20px;font-size:13px;font-weight:600;color:white;cursor:pointer;font-family:'DM Sans',sans-serif;">Kabul</button>
           <button onclick="rejectFriend('${fuid}',this)" style="padding:7px 11px;background:var(--card);border:none;border-radius:20px;font-size:13px;color:var(--sub);cursor:pointer;font-family:'DM Sans',sans-serif;">Reddet</button>
         </div>`;
       listEl.appendChild(div);
     }
-  }catch(e){ console.error('İstekler hatası:', e); }
+  }catch(e){ console.error(e); }
 }
 
 async function acceptFriend(fuid, fname, btn){
   const user = window._currentUser;
   if(!user) return;
+  const {db, ref, set} = window._fb;
   h.success(); sfx.task();
   const myData = { name: user.displayName||userProfile.name||'Kullanıcı', status:'accepted', uid:user.uid };
   if(userProfile.photoDataUrl) myData.photoDataUrl = userProfile.photoDataUrl;
-  // FIX: window._db
-  await window._db.ref('friends/'+fuid+'/'+user.uid).set(myData);
-  await window._db.ref('friends/'+user.uid+'/'+fuid).set({ name:fname, status:'accepted', uid:fuid });
+  await set(ref(db,'friends/'+fuid+'/'+user.uid), myData);
+  await set(ref(db,'friends/'+user.uid+'/'+fuid), { name:fname, status:'accepted', uid:fuid });
   btn.closest('div[style]').remove();
   showToast(fname+' ile artık arkadaşsınız!');
   loadFriendsList();
@@ -1305,24 +1545,24 @@ async function acceptFriend(fuid, fname, btn){
 async function rejectFriend(fuid, btn){
   const user = window._currentUser;
   if(!user) return;
-  // FIX: window._db
-  await window._db.ref('friends/'+user.uid+'/'+fuid).remove();
+  const {db, ref, set} = window._fb;
+  await set(ref(db,'friends/'+user.uid+'/'+fuid), null);
   btn.closest('div[style]').remove();
   showToast('İstek reddedildi');
 }
 
+let searchTimer = null;
 async function searchUsers(query){
   clearTimeout(searchTimer);
   const resultsEl = document.getElementById('search-results');
   if(query.length < 2){ resultsEl.innerHTML=''; return; }
   resultsEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--sub);font-size:13px;">Aranıyor...</div>';
-  // FIX: searchTimer tanımlı değişken
   searchTimer = setTimeout(async()=>{
     const user = window._currentUser;
     if(!user) return;
+    const {db, ref, get} = window._fb;
     try{
-      // FIX: window._db
-      const snap = await window._db.ref('users').once('value');
+      const snap = await get(ref(db,'users'));
       if(!snap.exists()){ resultsEl.innerHTML='<div style="text-align:center;padding:16px;color:var(--sub);font-size:13px;">Kullanıcı bulunamadı</div>'; return; }
       const users = snap.val();
       const q = query.toLowerCase();
@@ -1338,7 +1578,10 @@ async function searchUsers(query){
         div.className = 'user-result';
         div.innerHTML = `
           <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white;flex-shrink:0;">${initial}</div>
-          <div style="flex:1;"><div style="font-size:14px;font-weight:500;">${u.name||'Kullanıcı'}</div><div style="font-size:12px;color:var(--sub);">@${u.username||u.email}</div></div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:500;">${u.name||'Kullanıcı'}</div>
+            <div style="font-size:12px;color:var(--sub);">@${u.username||u.email}</div>
+          </div>
           <button class="add-btn" id="addbtn-${uid}" onclick="sendFriendRequest('${uid}','${(u.name||'').replace(/'/g,"\\'")}',this)">Ekle</button>`;
         resultsEl.appendChild(div);
       }
@@ -1349,14 +1592,14 @@ async function searchUsers(query){
 async function sendFriendRequest(toUid, toName, btn){
   const user = window._currentUser;
   if(!user) return;
+  const {db, ref, set, get} = window._fb;
   h.tap();
-  // FIX: window._db
-  const existing = await window._db.ref('friends/'+user.uid+'/'+toUid).once('value');
+  const existing = await get(ref(db,'friends/'+user.uid+'/'+toUid));
   if(existing.exists()){ showToast('Zaten arkadaşsınız veya istek bekliyor'); return; }
   const myData = { name: user.displayName||userProfile.name||'Kullanıcı', status: 'incoming', uid: user.uid };
   if(userProfile.photoDataUrl) myData.photoDataUrl = userProfile.photoDataUrl;
-  await window._db.ref('friends/'+toUid+'/'+user.uid).set(myData);
-  await window._db.ref('friends/'+user.uid+'/'+toUid).set({ name:toName, status:'sent', uid:toUid });
+  await set(ref(db,'friends/'+toUid+'/'+user.uid), myData);
+  await set(ref(db,'friends/'+user.uid+'/'+toUid), { name:toName, status:'sent', uid:toUid });
   btn.textContent = 'Gönderildi';
   btn.classList.add('sent');
   btn.disabled = true;
@@ -1371,8 +1614,12 @@ function openDM(friendUid, friendName, color, initial, photoUrl){
   h.tap();
   activeDMUserId = friendUid;
   const chatAv = document.getElementById('chat-av-el');
-  if(photoUrl){ chatAv.innerHTML = `<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
-  else { chatAv.style.background = color; chatAv.textContent = initial; }
+  if(photoUrl){
+    chatAv.innerHTML = `<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  } else {
+    chatAv.style.background = color;
+    chatAv.textContent = initial;
+  }
   document.getElementById('chat-name-el').textContent = friendName;
   if(dmListener){ dmListener(); dmListener=null; }
   document.getElementById('chat-msgs').innerHTML = '';
@@ -1380,11 +1627,11 @@ function openDM(friendUid, friendName, color, initial, photoUrl){
 
   const user = window._currentUser;
   if(!user) return;
+  const {db, ref, query, limitToLast, onChildAdded} = window._fb;
   const dmId = getDMId(user.uid, friendUid);
-  // FIX: window._db
-  const msgsRef = window._db.ref('dms/'+dmId).limitToLast(80);
+  const msgsRef = query(ref(db,'dms/'+dmId), limitToLast(80));
   const seen = new Set();
-  msgsRef.on('child_added', (snap)=>{
+  dmListener = onChildAdded(msgsRef, (snap)=>{
     if(seen.has(snap.key)) return;
     seen.add(snap.key);
     const m = snap.val();
@@ -1394,7 +1641,6 @@ function openDM(friendUid, friendName, color, initial, photoUrl){
     msgs.scrollTop = msgs.scrollHeight;
     if(!isMe) sfx.receive();
   });
-  dmListener = () => msgsRef.off('child_added');
 }
 
 function closeChat(){
@@ -1421,18 +1667,16 @@ async function sendDM(){
   const user = window._currentUser;
   if(!text || !user || !activeDMUserId) return;
   h.light(); sfx.send(); inp.value='';
+  const {db, ref, push, serverTimestamp} = window._fb;
   const dmId = getDMId(user.uid, activeDMUserId);
-  // FIX: window._db
-  await window._db.ref('dms/'+dmId).push({
-    text, uid:user.uid, time: timeStr(),
-    timestamp: firebase.database.ServerValue.TIMESTAMP
-  });
+  await push(ref(db,'dms/'+dmId), { text, uid:user.uid, time: timeStr(), timestamp: serverTimestamp() });
 }
 
 // ════════════════════════════════════════════
 // SAĞLIK / AKTİVİTE
 // ════════════════════════════════════════════
 let healthData = null;
+
 function generateHealthData(){
   const saved = localStorage.getItem('aura_health');
   if(saved){ try{ healthData = JSON.parse(saved); }catch(e){} }
@@ -1491,8 +1735,10 @@ async function saveGoal(){
   stepGoal = v; userProfile.stepGoal = v;
   if(healthData){ healthData.stepGoal = v; localStorage.setItem('aura_health', JSON.stringify(healthData)); }
   const user = window._currentUser;
-  // FIX: window._db
-  if(user){ try{ await window._db.ref('users/'+user.uid+'/stepGoal').set(v); }catch(e){} }
+  if(user){
+    const {db, ref, set} = window._fb;
+    try{ await set(ref(db,'users/'+user.uid+'/stepGoal'), v); }catch(e){}
+  }
   closeGoalModal();
   renderHealthData();
   showToast('Hedef güncellendi: '+v.toLocaleString('tr-TR')+' adım!');
@@ -1637,18 +1883,17 @@ function softTone(freq,vol,atk,dec,offset){
   o.start(c.currentTime+offset);o.stop(c.currentTime+offset+atk+dec+0.05);
 }
 const sfx = {
-  send:    ()=>{ const c=ctx(),o=c.createOscillator(),g=c.createGain(),f=c.createBiquadFilter(); o.connect(f);f.connect(g);g.connect(c.destination); o.type='sine';f.type='bandpass';f.frequency.value=900;f.Q.value=0.8; o.frequency.setValueAtTime(320,c.currentTime);o.frequency.exponentialRampToValueAtTime(680,c.currentTime+0.18); g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(0.13,c.currentTime+0.04);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.22); o.start(c.currentTime);o.stop(c.currentTime+0.3); },
+  send: ()=>{ const c=ctx(),o=c.createOscillator(),g=c.createGain(),f=c.createBiquadFilter(); o.connect(f);f.connect(g);g.connect(c.destination); o.type='sine';f.type='bandpass';f.frequency.value=900;f.Q.value=0.8; o.frequency.setValueAtTime(320,c.currentTime);o.frequency.exponentialRampToValueAtTime(680,c.currentTime+0.18); g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(0.13,c.currentTime+0.04);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.22); o.start(c.currentTime);o.stop(c.currentTime+0.3); },
   receive: ()=>{ softTone(880,0.11,0.008,0.28,0); softTone(1320,0.07,0.008,0.22,0.14); },
   correct: ()=>{ softTone(523,0.10,0.01,0.18,0); softTone(659,0.09,0.01,0.18,0.1); softTone(784,0.10,0.01,0.20,0.2); softTone(1046,0.08,0.01,0.30,0.32); },
-  wrong:   ()=>{ const c=ctx(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination);o.type='sine'; o.frequency.setValueAtTime(340,c.currentTime);o.frequency.exponentialRampToValueAtTime(200,c.currentTime+0.35); g.gain.setValueAtTime(0.12,c.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.4); o.start(c.currentTime);o.stop(c.currentTime+0.45); },
-  task:    ()=>{ softTone(440,0.09,0.01,0.14,0); softTone(554,0.09,0.01,0.14,0.1); softTone(659,0.10,0.01,0.16,0.2); softTone(880,0.09,0.01,0.26,0.33); },
-  coin:    ()=>{ softTone(1200,0.10,0.005,0.14,0); softTone(1500,0.07,0.005,0.12,0.08); }
+  wrong: ()=>{ const c=ctx(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination);o.type='sine'; o.frequency.setValueAtTime(340,c.currentTime);o.frequency.exponentialRampToValueAtTime(200,c.currentTime+0.35); g.gain.setValueAtTime(0.12,c.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.4); o.start(c.currentTime);o.stop(c.currentTime+0.45); },
+  task: ()=>{ softTone(440,0.09,0.01,0.14,0); softTone(554,0.09,0.01,0.14,0.1); softTone(659,0.10,0.01,0.16,0.2); softTone(880,0.09,0.01,0.26,0.33); },
+  coin: ()=>{ softTone(1200,0.10,0.005,0.14,0); softTone(1500,0.07,0.005,0.12,0.08); }
 };
 
 // ── Başlatma ──
 loadMusicLibrary();
 if(music.library.length > 0) renderLibrary();
 </script>
-
 </body>
 </html>
