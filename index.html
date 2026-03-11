@@ -1,552 +1,389 @@
 <!DOCTYPE html>
+
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Aura</title>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getDatabase, ref, push, onChildAdded, serverTimestamp, query, limitToLast, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAYnbV7A9P21my5e8tH7aeFFOCJTajCOMs",
+    authDomain: "aura-app-5284e.firebaseapp.com",
+    databaseURL: "https://aura-app-5284e-default-rtdb.firebaseio.com",
+    projectId: "aura-app-5284e",
+    storageBucket: "aura-app-5284e.firebasestorage.app",
+    messagingSenderId: "145654229990",
+    appId: "1:145654229990:web:fada57fa05bffe887c0427"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  window._fb = { auth, db, ref, push, onChildAdded, serverTimestamp, query, limitToLast, onValue,
+    createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile };
+
+  onAuthStateChanged(auth, (user) => {
+    window._currentUser = user;
+    document.dispatchEvent(new CustomEvent('auth-changed', { detail: { user } }));
+  });
+</script>
+
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap');
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  :root{
-    --bg:#FFFFFF;--card:#F2F2F7;--text:#1C1C1E;--sub:#8E8E93;
-    --accent:#FF6B00;--blue:#007AFF;--green:#34C759;--purple:#AF52DE;--pink:#FF2D55;--yellow:#FFD60A;
-    --border:rgba(0,0,0,0.08);--shadow:0 2px 16px rgba(0,0,0,0.07);--radius:22px;--nav:72px;
-  }
-  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden}
-  .screen{display:none;flex-direction:column;min-height:100vh;padding-bottom:calc(var(--nav)+12px);animation:fadeUp .3s cubic-bezier(.4,0,.2,1)}
-  .screen.active{display:flex}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-  .scroll-area{overflow-y:auto;flex:1;padding:0 18px}
-  .scroll-area::-webkit-scrollbar{display:none}
-  .statusbar{padding:14px 22px 6px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:500;color:var(--sub);flex-shrink:0}
-  /* NAV */
-  .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--nav);background:rgba(255,255,255,0.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;padding:0 8px 14px;z-index:100}
-  .nav-item{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:6px 14px;border-radius:14px;transition:all .2s}
-  .nav-item .ni{width:28px;height:28px;transition:transform .2s;color:#C7C7CC}
-  .nav-item.active .ni{transform:scale(1.12);color:var(--accent)}
-  .nav-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:0;transition:opacity .2s}
-  .nav-item.active .nav-dot{opacity:1}
-  /* CARDS */
-  .card{background:var(--card);border-radius:var(--radius);padding:20px;margin-bottom:14px}
-  .section-title{font-family:'DM Serif Display',serif;font-size:21px;color:var(--text);margin-bottom:14px;margin-top:6px}
-  /* BADGE */
-  .coins-badge{display:flex;align-items:center;gap:6px;background:rgba(255,107,0,0.1);border-radius:30px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--accent)}
-  .avatar-sm{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(255,107,0,0.28)}
-  /* RINGS */
-  .ring-svg{transform:rotate(-90deg)}
-  .ring-track{fill:none;stroke:#E5E5EA;stroke-width:7}
-  .ring-fill{fill:none;stroke-width:7;stroke-linecap:round}
-  /* BARS */
-  .steps-visual{display:flex;gap:4px;align-items:flex-end;height:46px;margin:12px 0 8px}
-  .step-bar{flex:1;border-radius:4px 4px 0 0}
-  .step-bar.filled{background:linear-gradient(to top,#FF6B00,#FF9500)}
-  .step-bar.partial{background:linear-gradient(to top,#007AFF,#34AADC)}
-  .step-bar.empty{background:#E5E5EA}
-  /* Q CARD */
-  .q-card{background:linear-gradient(145deg,#1C1C1E,#2C2C2E);color:white;border-radius:var(--radius);padding:22px;margin-bottom:14px;position:relative;overflow:hidden}
-  .q-card::before{content:'';position:absolute;top:-40px;right:-40px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,0,0.2) 0%,transparent 70%)}
-  .q-label{font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:7px}
-  .q-text{font-size:15px;line-height:1.55;margin-bottom:16px;color:rgba(255,255,255,0.92)}
-  .q-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .q-option{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:10px 12px;font-size:13px;color:rgba(255,255,255,0.85);cursor:pointer;transition:all .2s;text-align:center;font-family:'DM Sans',sans-serif}
-  .q-option:hover{background:rgba(255,107,0,0.22);border-color:var(--accent)}
-  .q-option.correct{background:rgba(52,199,89,0.28);border-color:var(--green);color:#6EF09A}
-  .q-option.wrong{background:rgba(255,59,48,0.25);border-color:#FF3B30;color:#FF8080}
-  /* GAMES */
-  .games-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
-  .game-card{border-radius:20px;padding:18px 16px;cursor:pointer;transition:transform .18s;min-height:128px;display:flex;flex-direction:column;justify-content:space-between}
-  .game-card:active{transform:scale(0.97)}
-  .game-name{font-size:14px;font-weight:600;margin-top:8px}
-  .game-reward{font-size:11px;margin-top:3px;opacity:.7;display:flex;align-items:center;gap:4px}
-  .gc1{background:linear-gradient(135deg,#EDE0FF,#D9BAFF);color:#5B2D91}
-  .gc2{background:linear-gradient(135deg,#FFE8D0,#FFCFA0);color:#8C4A00}
-  .gc3{background:linear-gradient(135deg,#CCF5E0,#99EDCA);color:#1A6B45}
-  .gc4{background:linear-gradient(135deg,#FFD6DC,#FFB0BC);color:#8C1A2E}
-  /* TASKS */
-  .task-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer}
-  .task-item:last-child{border-bottom:none}
-  .task-check{width:24px;height:24px;border-radius:50%;border:2px solid #D1D1D6;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s}
-  .task-item.done .task-check{background:var(--green);border-color:var(--green)}
-  .task-item.done .task-text{text-decoration:line-through;color:var(--sub)}
-  .task-reward-badge{margin-left:auto;background:rgba(255,107,0,0.1);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;color:var(--accent);white-space:nowrap;display:flex;align-items:center;gap:4px}
-  /* MESSAGES */
-  .msg-item{display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;border-radius:18px;transition:background .15s;margin-bottom:1px}
-  .msg-item:active{background:rgba(0,0,0,0.04)}
-  .msg-avatar{width:52px;height:52px;border-radius:50%;flex-shrink:0;position:relative;overflow:hidden}
-  .online-dot{width:12px;height:12px;background:var(--green);border:2.5px solid white;border-radius:50%;position:absolute;bottom:1px;right:1px;z-index:2}
-  .msg-info{flex:1;min-width:0}
-  .msg-name{font-size:15px;font-weight:500}
-  .msg-preview{font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-  .msg-time{font-size:11px;color:var(--sub)}
-  .msg-unread{width:20px;height:20px;background:var(--accent);border-radius:50%;font-size:11px;font-weight:600;color:white;display:flex;align-items:center;justify-content:center}
-  /* CHAT */
-  #chat-screen{display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:100vh;background:var(--bg);z-index:150;flex-direction:column}
-  #chat-screen.open{display:flex}
-  .chat-header{padding:12px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.96);backdrop-filter:blur(16px);flex-shrink:0}
-  .back-btn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--accent);font-size:20px}
-  .chat-messages{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
-  .chat-messages::-webkit-scrollbar{display:none}
-  .bubble{max-width:75%;font-size:14px;line-height:1.5;word-break:break-word;display:flex;flex-direction:column;}
-  .bubble-inner{padding:10px 14px;position:relative;}
-  .bubble.them .bubble-inner{background:#F2F2F7;color:var(--text);border-radius:4px 18px 18px 18px;}
-  .bubble.me   .bubble-inner{background:linear-gradient(135deg,#FF6B00,#FF9500);color:white;border-radius:18px 4px 18px 18px;}
-  .bubble.them{align-self:flex-start;margin-left:10px;}
-  .bubble.me  {align-self:flex-end;margin-right:10px;}
-  /* kuyruk sol (them) */
-  .bubble.them .bubble-tail{position:absolute;top:0;left:-9px;width:14px;height:18px;pointer-events:none;}
-  /* kuyruk sağ (me) */
-  .bubble.me .bubble-tail{position:absolute;top:0;right:-9px;width:14px;height:18px;pointer-events:none;}
-  .bubble-time{font-size:10px;opacity:.42;margin-top:3px;padding:0 4px 2px;}
-  .bubble.me   .bubble-time{text-align:right;color:var(--sub);}
-  .bubble.them .bubble-time{text-align:left;color:var(--sub);}
-  .chat-input-bar{padding:12px 18px 16px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);background:rgba(255,255,255,0.96);backdrop-filter:blur(16px);flex-shrink:0}
-  .chat-input{flex:1;background:var(--card);border:none;border-radius:20px;padding:10px 16px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;color:var(--text)}
-  .send-btn{width:38px;height:38px;background:linear-gradient(135deg,#FF6B00,#FF9500);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(255,107,0,0.35);flex-shrink:0}
-  /* PROFILE */
-  .profile-hero{background:linear-gradient(155deg,#1C1C1E,#2C2C2E);border-radius:0 0 30px 30px;padding:22px 22px 26px;margin-bottom:18px;position:relative;overflow:hidden}
-  .profile-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,0,0.16) 0%,transparent 70%)}
-  .profile-avatar-lg{width:74px;height:74px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(255,107,0,0.32);margin-bottom:12px;border:3px solid rgba(255,255,255,0.14)}
-  .profile-name{font-family:'DM Serif Display',serif;font-size:23px;color:white}
-  .profile-level{font-size:11px;color:var(--accent);font-weight:600;letter-spacing:1px;margin-top:3px}
-  .profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
-  .stat-box{background:rgba(255,255,255,0.07);border-radius:14px;padding:10px 8px;text-align:center}
-  .stat-val{font-size:18px;font-weight:600;color:white;display:flex;align-items:center;justify-content:center;gap:4px}
-  .stat-label{font-size:10px;color:rgba(255,255,255,0.45);margin-top:2px}
-  /* SHOP */
-  .shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
-  .shop-item{background:var(--card);border-radius:20px;padding:16px;text-align:center;cursor:pointer;transition:transform .18s}
-  .shop-item:active{transform:scale(0.97)}
-  .shop-name{font-size:13px;font-weight:500;margin-top:8px}
-  .shop-price{display:inline-flex;align-items:center;gap:4px;background:rgba(255,107,0,0.1);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;color:var(--accent);margin-top:8px}
-  /* SETTINGS */
-  .setting-row{display:flex;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;gap:14px}
-  .setting-row:last-child{border-bottom:none}
-  .setting-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .setting-label{flex:1;font-size:14px}
-  .setting-arrow{color:#C7C7CC;font-size:16px}
-  /* WEEK */
-  .week-chart{display:flex;align-items:flex-end;gap:8px;height:80px;padding-top:8px}
-  .week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
-  .week-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end}
-  .week-bar{width:100%;border-radius:5px 5px 0 0;min-height:4px}
-  .week-day{font-size:10px;color:var(--sub)}
-  /* MISC */
-  .pill{display:inline-flex;align-items:center;background:var(--card);border-radius:30px;padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);white-space:nowrap}
-  .pill.active-pill{background:var(--text);color:white;border-color:var(--text)}
-  .streak-dots{display:flex;gap:6px;margin-top:8px}
-  .streak-dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
-  .streak-dot.empty{background:#E5E5EA}
-  .aura-logo{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);letter-spacing:-.5px}
-  .aura-logo span{color:var(--accent)}
-  .home-header{padding:0 18px 4px;display:flex;justify-content:space-between;align-items:center}
-  .big-ring{position:relative}
-  .big-ring svg{transform:rotate(-90deg)}
-  .ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
-  .ring-steps{font-family:'DM Serif Display',serif;font-size:32px}
-  .ring-goal{font-size:12px;color:var(--sub);margin-top:2px}
-  .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(16px);background:#1C1C1E;color:white;padding:10px 20px;border-radius:30px;font-size:13px;font-weight:500;opacity:0;transition:all .28s;z-index:200;white-space:nowrap;pointer-events:none}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-  .pill-row{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
-  .pill-row::-webkit-scrollbar{display:none}
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#FFFFFF;--card:#F2F2F7;--text:#1C1C1E;--sub:#8E8E93;
+  --accent:#FF6B00;--blue:#007AFF;--green:#34C759;--purple:#AF52DE;
+  --border:rgba(0,0,0,0.08);--radius:22px;--nav:72px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden}
 
-  /* ── MUSIC PLAYER ── */
-  .music-hero{
-    background:linear-gradient(155deg,#1C1C1E,#2C2C2E);
-    border-radius:0 0 32px 32px;
-    padding:20px 22px 28px;
-    margin-bottom:18px;
-    position:relative;overflow:hidden;
-  }
-  .music-hero::before{content:'';position:absolute;top:-50px;left:-50px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(175,82,222,0.2) 0%,transparent 70%)}
-  .music-hero::after{content:'';position:absolute;bottom:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,0,0.15) 0%,transparent 70%)}
-  .album-art{
-    width:180px;height:180px;border-radius:20px;
-    margin:0 auto 18px;
-    display:flex;align-items:center;justify-content:center;
-    position:relative;z-index:1;
-    box-shadow:0 16px 40px rgba(0,0,0,0.5);
-    overflow:hidden;
-    transition:transform .3s;
-  }
-  .album-art.spinning{animation:albumSpin 12s linear infinite}
-  @keyframes albumSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-  .album-art.paused{animation-play-state:paused}
-  .music-title{font-family:'DM Serif Display',serif;font-size:20px;color:white;text-align:center;z-index:1;position:relative}
-  .music-artist{font-size:13px;color:rgba(255,255,255,0.5);text-align:center;margin-top:4px;z-index:1;position:relative}
-  /* progress bar */
-  .progress-wrap{margin:16px 0 8px;position:relative;z-index:1}
-  .progress-bar{width:100%;height:4px;background:rgba(255,255,255,0.15);border-radius:4px;cursor:pointer;position:relative}
-  .progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#FF6B00,#FF9500);transition:width .5s linear;pointer-events:none}
-  .progress-thumb{width:12px;height:12px;border-radius:50%;background:white;position:absolute;top:-4px;transform:translateX(-50%);box-shadow:0 2px 6px rgba(0,0,0,0.4);transition:left .5s linear}
-  .progress-times{display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.4);margin-top:6px}
-  /* controls */
-  .music-controls{display:flex;align-items:center;justify-content:center;gap:28px;margin-top:4px;position:relative;z-index:1}
-  .ctrl-btn{background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;padding:6px}
-  .ctrl-btn:active{transform:scale(.9)}
-  .play-btn{width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(255,107,0,0.45);cursor:pointer;transition:transform .15s}
-  .play-btn:active{transform:scale(.93)}
-  /* song list */
-  .song-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;border-radius:12px;padding-left:8px;padding-right:8px}
-  .song-row:last-child{border-bottom:none}
-  .song-row:active{background:rgba(0,0,0,0.04)}
-  .song-row.playing .song-title{color:var(--accent);font-weight:600}
-  .song-thumb{width:46px;height:46px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
-  .song-info{flex:1;min-width:0}
-  .song-title{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .song-meta{font-size:11px;color:var(--sub);margin-top:2px}
-  .song-dur{font-size:12px;color:var(--sub)}
-  /* eq bars animation */
-  .eq-bars{display:flex;align-items:flex-end;gap:2px;height:16px;width:16px}
-  .eq-bar{width:3px;border-radius:2px;background:var(--accent)}
-  .eq-bar:nth-child(1){animation:eq1 .6s ease-in-out infinite alternate}
-  .eq-bar:nth-child(2){animation:eq2 .5s ease-in-out infinite alternate}
-  .eq-bar:nth-child(3){animation:eq3 .7s ease-in-out infinite alternate}
-  @keyframes eq1{from{height:4px}to{height:14px}}
-  @keyframes eq2{from{height:8px}to{height:6px}}
-  @keyframes eq3{from{height:12px}to{height:4px}}
-  /* upload zone */
-  .upload-zone{border:2px dashed rgba(175,82,222,0.4);border-radius:16px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px}
-  .upload-zone:hover{border-color:#AF52DE;background:rgba(175,82,222,0.05)}
-  /* mini player — ekranın üstünde sabit */
-  .mini-player{
-    position:fixed;bottom:calc(var(--nav));left:50%;transform:translateX(-50%);
-    width:calc(100% - 24px);max-width:406px;
-    background:rgba(28,28,30,0.96);
-    backdrop-filter:blur(20px);
-    border-radius:16px;
-    padding:10px 16px;
-    display:none;
-    align-items:center;
-    gap:12px;
-    z-index:95;
-    box-shadow:0 -4px 20px rgba(0,0,0,0.2);
-  }
-  .mini-player.visible{display:flex}
-  .mini-art{width:36px;height:36px;border-radius:8px;flex-shrink:0;overflow:hidden}
-  .mini-info{flex:1;min-width:0}
-  .mini-title{font-size:13px;font-weight:500;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .mini-artist{font-size:11px;color:rgba(255,255,255,0.45);margin-top:1px}
-  .mini-controls{display:flex;align-items:center;gap:10px}
-  .mini-play{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer}
-  /* now playing on profile */
-  .now-playing-card{
-    background:linear-gradient(135deg,#1C1C1E,#2C2C2E);
-    border-radius:18px;
-    padding:14px 16px;
-    display:flex;align-items:center;gap:14px;
-    margin-bottom:14px;
-    position:relative;overflow:hidden;
-  }
-  .now-playing-card::before{content:'';position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(175,82,222,0.2) 0%,transparent 70%)}
-  .np-art{width:48px;height:48px;border-radius:10px;flex-shrink:0;overflow:hidden}
-  .np-info{flex:1;min-width:0}
-  .np-label{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#AF52DE;margin-bottom:3px}
-  .np-title{font-size:14px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .np-artist{font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px}
+/* ── AUTH EKRANI ── */
+.auth-screen{
+  display:none;position:fixed;inset:0;z-index:999;
+  background:linear-gradient(155deg,#1C1C1E,#2C2C2E);
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:32px 28px;max-width:430px;margin:0 auto;
+}
+.auth-screen.show{display:flex}
+.auth-logo{font-family:'DM Serif Display',serif;font-size:42px;color:white;letter-spacing:-.5px;margin-bottom:6px;}
+.auth-logo span{color:var(--accent)}
+.auth-sub{font-size:14px;color:rgba(255,255,255,0.45);margin-bottom:40px;}
+.auth-tabs{display:flex;background:rgba(255,255,255,0.07);border-radius:14px;padding:4px;margin-bottom:24px;width:100%;}
+.auth-tab{flex:1;padding:10px;text-align:center;border-radius:10px;font-size:14px;font-weight:500;color:rgba(255,255,255,0.5);cursor:pointer;transition:all .2s;}
+.auth-tab.active{background:var(--accent);color:white;}
+.auth-input{
+  width:100%;background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.12);
+  border-radius:14px;padding:14px 18px;font-family:'DM Sans',sans-serif;font-size:15px;
+  color:white;outline:none;margin-bottom:12px;transition:border-color .2s;
+}
+.auth-input::placeholder{color:rgba(255,255,255,0.3)}
+.auth-input:focus{border-color:var(--accent)}
+.auth-btn{
+  width:100%;padding:15px;background:linear-gradient(135deg,#FF6B00,#FF9500);
+  border:none;border-radius:14px;color:white;font-family:'DM Sans',sans-serif;
+  font-size:15px;font-weight:600;cursor:pointer;margin-top:6px;
+  box-shadow:0 8px 24px rgba(255,107,0,0.35);transition:transform .15s;
+}
+.auth-btn:active{transform:scale(.98)}
+.auth-err{font-size:12px;color:#FF6B8A;text-align:center;margin-top:8px;min-height:18px;}
+.auth-loading{display:none;width:20px;height:20px;border:2.5px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-  /* ── COIN FLY ── */
-  .coin-fly{position:fixed;z-index:300;pointer-events:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFD60A,#FF9500);box-shadow:0 2px 8px rgba(255,149,0,0.6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;opacity:1}
-  @keyframes coinFly{
-    0%  {transform:scale(1) translate(0,0);opacity:1}
-    60% {transform:scale(1.3) translate(var(--fly-x),var(--fly-y));opacity:.9}
-    100%{transform:scale(0.3) translate(var(--end-x),var(--end-y));opacity:0}
-  }
-  /* ── BADGE BOUNCE ── */
-  @keyframes badgePop{0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(.92)}80%{transform:scale(1.1)}100%{transform:scale(1)}}
-  .badge-pop{animation:badgePop .45s cubic-bezier(.4,0,.2,1)}
-  /* ── NEW CHAT BUTTON ── */
-  .fab{position:fixed;bottom:calc(var(--nav)+16px);right:calc(50% - 215px + 16px);width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);box-shadow:0 6px 20px rgba(255,107,0,0.4);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:90;transition:transform .18s}
-  .fab:active{transform:scale(.94)}
-  .fab.visible{display:flex}
-  /* ── SOCIAL ACTIVITY CARD ── */
-  .social-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
-  .social-row:last-child{border-bottom:none}
-  .social-av{width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0}
-  .social-text{font-size:13px;line-height:1.45;flex:1}
-  .social-text b{font-weight:600}
-  .social-stat{font-size:12px;font-weight:700;color:var(--accent);background:rgba(255,107,0,0.1);border-radius:12px;padding:3px 9px;white-space:nowrap}
+/* ── ANA UYGULAMA ── */
+.screen{display:none;flex-direction:column;min-height:100vh;padding-bottom:calc(var(--nav)+12px);animation:fadeUp .3s cubic-bezier(.4,0,.2,1)}
+.screen.active{display:flex}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.scroll-area{overflow-y:auto;flex:1;padding:0 18px}
+.scroll-area::-webkit-scrollbar{display:none}
+.statusbar{padding:14px 22px 6px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:500;color:var(--sub);flex-shrink:0}
+
+/* NAV */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--nav);background:rgba(255,255,255,0.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around;padding:0 8px 14px;z-index:100}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:6px 14px;border-radius:14px;transition:all .2s}
+.nav-item .ni{width:28px;height:28px;transition:transform .2s;color:#C7C7CC}
+.nav-item.active .ni{transform:scale(1.12);color:var(--accent)}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:0;transition:opacity .2s}
+.nav-item.active .nav-dot{opacity:1}
+
+/* CARDS */
+.card{background:var(--card);border-radius:var(--radius);padding:20px;margin-bottom:14px}
+.section-title{font-family:'DM Serif Display',serif;font-size:21px;color:var(--text);margin-bottom:14px;margin-top:6px}
+.coins-badge{display:flex;align-items:center;gap:6px;background:rgba(255,107,0,0.1);border-radius:30px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--accent)}
+.avatar-sm{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(255,107,0,0.28)}
+.ring-svg{transform:rotate(-90deg)}
+.ring-track{fill:none;stroke:#E5E5EA;stroke-width:7}
+.ring-fill{fill:none;stroke-width:7;stroke-linecap:round}
+.steps-visual{display:flex;gap:4px;align-items:flex-end;height:46px;margin:12px 0 8px}
+.step-bar{flex:1;border-radius:4px 4px 0 0}
+.step-bar.filled{background:linear-gradient(to top,#FF6B00,#FF9500)}
+.step-bar.partial{background:linear-gradient(to top,#007AFF,#34AADC)}
+.step-bar.empty{background:#E5E5EA}
+.q-card{background:linear-gradient(145deg,#1C1C1E,#2C2C2E);color:white;border-radius:var(--radius);padding:22px;margin-bottom:14px;position:relative;overflow:hidden}
+.q-card::before{content:'';position:absolute;top:-40px;right:-40px;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,0,0.2) 0%,transparent 70%)}
+.q-label{font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.q-text{font-size:15px;line-height:1.55;margin-bottom:16px;color:rgba(255,255,255,0.92)}
+.q-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.q-option{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:10px 12px;font-size:13px;color:rgba(255,255,255,0.85);cursor:pointer;transition:all .2s;text-align:center;font-family:'DM Sans',sans-serif}
+.q-option:hover{background:rgba(255,107,0,0.22);border-color:var(--accent)}
+.q-option.correct{background:rgba(52,199,89,0.28);border-color:var(--green);color:#6EF09A}
+.q-option.wrong{background:rgba(255,59,48,0.25);border-color:#FF3B30;color:#FF8080}
+.games-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.game-card{border-radius:20px;padding:18px 16px;cursor:pointer;transition:transform .18s;min-height:128px;display:flex;flex-direction:column;justify-content:space-between}
+.game-card:active{transform:scale(0.97)}
+.game-name{font-size:14px;font-weight:600;margin-top:8px}
+.game-reward{font-size:11px;margin-top:3px;opacity:.7;display:flex;align-items:center;gap:4px}
+.gc1{background:linear-gradient(135deg,#EDE0FF,#D9BAFF);color:#5B2D91}
+.gc2{background:linear-gradient(135deg,#FFE8D0,#FFCFA0);color:#8C4A00}
+.gc3{background:linear-gradient(135deg,#CCF5E0,#99EDCA);color:#1A6B45}
+.gc4{background:linear-gradient(135deg,#FFD6DC,#FFB0BC);color:#8C1A2E}
+.task-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.task-item:last-child{border-bottom:none}
+.task-check{width:24px;height:24px;border-radius:50%;border:2px solid #D1D1D6;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.task-item.done .task-check{background:var(--green);border-color:var(--green)}
+.task-item.done .task-text{text-decoration:line-through;color:var(--sub)}
+.task-reward-badge{margin-left:auto;background:rgba(255,107,0,0.1);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;color:var(--accent);white-space:nowrap;display:flex;align-items:center;gap:4px}
+
+/* MESSAGES */
+.msg-item{display:flex;align-items:center;gap:12px;padding:13px 18px;cursor:pointer;border-radius:18px;transition:background .15s;margin-bottom:1px}
+.msg-item:active{background:rgba(0,0,0,0.04)}
+.msg-avatar{width:52px;height:52px;border-radius:50%;flex-shrink:0;position:relative;overflow:hidden}
+.online-dot{width:12px;height:12px;background:var(--green);border:2.5px solid white;border-radius:50%;position:absolute;bottom:1px;right:1px;z-index:2}
+.msg-info{flex:1;min-width:0}
+.msg-name{font-size:15px;font-weight:500}
+.msg-preview{font-size:13px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.msg-time{font-size:11px;color:var(--sub)}
+.msg-unread{width:20px;height:20px;background:var(--accent);border-radius:50%;font-size:11px;font-weight:600;color:white;display:flex;align-items:center;justify-content:center}
+
+/* CHAT */
+#chat-screen{display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:100vh;background:var(--bg);z-index:150;flex-direction:column}
+#chat-screen.open{display:flex}
+.chat-header{padding:12px 18px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.96);backdrop-filter:blur(16px);flex-shrink:0}
+.back-btn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--accent);font-size:20px}
+.chat-messages{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.chat-messages::-webkit-scrollbar{display:none}
+.bubble{max-width:75%;font-size:14px;line-height:1.5;word-break:break-word;display:flex;flex-direction:column;}
+.bubble-inner{padding:10px 14px;position:relative;}
+.bubble.them .bubble-inner{background:#F2F2F7;color:var(--text);border-radius:4px 18px 18px 18px;}
+.bubble.me   .bubble-inner{background:linear-gradient(135deg,#FF6B00,#FF9500);color:white;border-radius:18px 4px 18px 18px;}
+.bubble.them{align-self:flex-start;margin-left:10px;}
+.bubble.me  {align-self:flex-end;margin-right:10px;}
+.bubble.them .bubble-tail{position:absolute;top:0;left:-9px;width:14px;height:18px;pointer-events:none;}
+.bubble.me .bubble-tail{position:absolute;top:0;right:-9px;width:14px;height:18px;pointer-events:none;}
+.bubble-time{font-size:10px;opacity:.42;margin-top:3px;padding:0 4px 2px;}
+.bubble.me .bubble-time{text-align:right;color:var(--sub);}
+.bubble.them .bubble-time{text-align:left;color:var(--sub);}
+.chat-input-bar{padding:12px 18px 16px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);background:rgba(255,255,255,0.96);backdrop-filter:blur(16px);flex-shrink:0}
+.chat-input{flex:1;background:var(--card);border:none;border-radius:20px;padding:10px 16px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;color:var(--text)}
+.send-btn{width:38px;height:38px;background:linear-gradient(135deg,#FF6B00,#FF9500);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(255,107,0,0.35);flex-shrink:0}
+
+/* Typing */
+.typing-wrap{padding:0 28px 4px;display:none;}
+.typing-wrap.show{display:block}
+.typing-dots{background:#F2F2F7;border-radius:4px 18px 18px 18px;padding:12px 16px;display:inline-flex;gap:5px;align-items:center}
+.typing-dot{width:7px;height:7px;border-radius:50%;background:#8E8E93;animation:td 1.2s ease-in-out infinite}
+.typing-dot:nth-child(2){animation-delay:.2s}.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes td{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+
+/* PROFILE */
+.profile-hero{background:linear-gradient(155deg,#1C1C1E,#2C2C2E);border-radius:0 0 30px 30px;padding:22px 22px 26px;margin-bottom:18px;position:relative;overflow:hidden}
+.profile-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,0,0.16) 0%,transparent 70%)}
+.profile-avatar-lg{width:74px;height:74px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(255,107,0,0.32);margin-bottom:12px;border:3px solid rgba(255,255,255,0.14)}
+.profile-name{font-family:'DM Serif Display',serif;font-size:23px;color:white}
+.profile-email{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px}
+.profile-level{font-size:11px;color:var(--accent);font-weight:600;letter-spacing:1px;margin-top:3px}
+.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.stat-box{background:rgba(255,255,255,0.07);border-radius:14px;padding:10px 8px;text-align:center}
+.stat-val{font-size:18px;font-weight:600;color:white;display:flex;align-items:center;justify-content:center;gap:4px}
+.stat-label{font-size:10px;color:rgba(255,255,255,0.45);margin-top:2px}
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.shop-item{background:var(--card);border-radius:20px;padding:16px;text-align:center;cursor:pointer;transition:transform .18s}
+.shop-item:active{transform:scale(0.97)}
+.shop-name{font-size:13px;font-weight:500;margin-top:8px}
+.shop-price{display:inline-flex;align-items:center;gap:4px;background:rgba(255,107,0,0.1);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600;color:var(--accent);margin-top:8px}
+.setting-row{display:flex;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);cursor:pointer;gap:14px}
+.setting-row:last-child{border-bottom:none}
+.setting-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.setting-label{flex:1;font-size:14px}
+.setting-arrow{color:#C7C7CC;font-size:16px}
+.week-chart{display:flex;align-items:flex-end;gap:8px;height:80px;padding-top:8px}
+.week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.week-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end}
+.week-bar{width:100%;border-radius:5px 5px 0 0;min-height:4px}
+.week-day{font-size:10px;color:var(--sub)}
+.pill{display:inline-flex;align-items:center;background:var(--card);border-radius:30px;padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);white-space:nowrap}
+.pill.active-pill{background:var(--text);color:white;border-color:var(--text)}
+.streak-dots{display:flex;gap:6px;margin-top:8px}
+.streak-dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.aura-logo{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);letter-spacing:-.5px}
+.aura-logo span{color:var(--accent)}
+.home-header{padding:0 18px 4px;display:flex;justify-content:space-between;align-items:center}
+.big-ring{position:relative}
+.big-ring svg{transform:rotate(-90deg)}
+.ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.ring-steps{font-family:'DM Serif Display',serif;font-size:32px}
+.ring-goal{font-size:12px;color:var(--sub);margin-top:2px}
+.toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(16px);background:#1C1C1E;color:white;padding:10px 20px;border-radius:30px;font-size:13px;font-weight:500;opacity:0;transition:all .28s;z-index:300;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.pill-row{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
+.pill-row::-webkit-scrollbar{display:none}
+.social-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.social-row:last-child{border-bottom:none}
+.social-av{width:38px;height:38px;border-radius:50%;overflow:hidden;flex-shrink:0}
+.social-text{font-size:13px;line-height:1.45;flex:1}
+.social-text b{font-weight:600}
+.social-stat{font-size:12px;font-weight:700;color:var(--accent);background:rgba(255,107,0,0.1);border-radius:12px;padding:3px 9px;white-space:nowrap}
+.coin-fly{position:fixed;z-index:500;pointer-events:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFD60A,#FF9500);box-shadow:0 2px 8px rgba(255,149,0,0.6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:white;opacity:1}
+@keyframes coinFly{0%{transform:scale(1) translate(0,0);opacity:1}60%{transform:scale(1.3) translate(var(--fly-x),var(--fly-y));opacity:.9}100%{transform:scale(0.3) translate(var(--end-x),var(--end-y));opacity:0}}
+@keyframes badgePop{0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(.92)}80%{transform:scale(1.1)}100%{transform:scale(1)}}
+.badge-pop{animation:badgePop .45s cubic-bezier(.4,0,.2,1)}
+.fab{position:fixed;bottom:calc(var(--nav)+16px);right:calc(50% - 215px + 16px);width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);box-shadow:0 6px 20px rgba(255,107,0,0.4);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:90;transition:transform .18s}
+.fab:active{transform:scale(.94)}
+.fab.visible{display:flex}
+
+/* Oda seçici */
+.room-pill{display:inline-flex;align-items:center;background:var(--card);border-radius:30px;padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;border:1.5px solid transparent;white-space:nowrap;transition:all .2s}
+.room-pill.active{background:var(--accent);color:white;}
+
+/* Firebase bağlantı göstergesi */
+.fb-indicator{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--sub);}
+.fb-dot{width:7px;height:7px;border-radius:50%;background:#D1D1D6;transition:background .3s}
+.fb-dot.on{background:var(--green)}
+.fb-dot.off{background:#FF3B30}
+
+/* Çıkış butonu */
+.logout-btn{display:flex;align-items:center;gap:8px;padding:14px 0;cursor:pointer;color:#FF3B30;font-size:14px;font-weight:500}
+
+/* Müzik */
+.music-hero{background:linear-gradient(155deg,#1C1C1E,#2C2C2E);border-radius:0 0 32px 32px;padding:20px 22px 28px;margin-bottom:18px;position:relative;overflow:hidden;}
+.music-hero::before{content:'';position:absolute;top:-50px;left:-50px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(175,82,222,0.2) 0%,transparent 70%)}
+.album-art{width:180px;height:180px;border-radius:20px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;box-shadow:0 16px 40px rgba(0,0,0,.5);overflow:hidden;}
+.music-title{font-family:'DM Serif Display',serif;font-size:20px;color:white;text-align:center;z-index:1;position:relative}
+.music-artist{font-size:13px;color:rgba(255,255,255,0.5);text-align:center;margin-top:4px;z-index:1;position:relative}
+.progress-wrap{margin:16px 0 8px;position:relative;z-index:1}
+.progress-bar{width:100%;height:4px;background:rgba(255,255,255,0.15);border-radius:4px;cursor:pointer;position:relative}
+.progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#FF6B00,#FF9500);transition:width .5s linear;pointer-events:none}
+.progress-thumb{width:12px;height:12px;border-radius:50%;background:white;position:absolute;top:-4px;transform:translateX(-50%);box-shadow:0 2px 6px rgba(0,0,0,0.4);transition:left .5s linear}
+.progress-times{display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.4);margin-top:6px}
+.music-controls{display:flex;align-items:center;justify-content:center;gap:28px;margin-top:4px;position:relative;z-index:1}
+.ctrl-btn{background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s;padding:6px}
+.ctrl-btn:active{transform:scale(.9)}
+.play-btn{width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(255,107,0,0.45);cursor:pointer;transition:transform .15s}
+.play-btn:active{transform:scale(.93)}
+.song-row{display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:12px;transition:background .15s}
+.song-row:last-child{border-bottom:none}
+.song-row:active{background:rgba(0,0,0,0.04)}
+.song-row.playing .song-title{color:var(--accent);font-weight:600}
+.song-thumb{width:46px;height:46px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.song-info{flex:1;min-width:0}
+.song-title{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song-meta{font-size:11px;color:var(--sub);margin-top:2px}
+.song-dur{font-size:12px;color:var(--sub)}
+.eq-bars{display:flex;align-items:flex-end;gap:2px;height:16px;width:16px}
+.eq-bar{width:3px;border-radius:2px;background:var(--accent)}
+.eq-bar:nth-child(1){animation:eq1 .6s ease-in-out infinite alternate}
+.eq-bar:nth-child(2){animation:eq2 .5s ease-in-out infinite alternate}
+.eq-bar:nth-child(3){animation:eq3 .7s ease-in-out infinite alternate}
+@keyframes eq1{from{height:4px}to{height:14px}}@keyframes eq2{from{height:8px}to{height:6px}}@keyframes eq3{from{height:12px}to{height:4px}}
+.upload-zone{border:2px dashed rgba(175,82,222,0.4);border-radius:16px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:14px}
+.upload-zone:hover{border-color:#AF52DE;background:rgba(175,82,222,0.05)}
+.mini-player{position:fixed;bottom:calc(var(--nav));left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:406px;background:rgba(28,28,30,0.96);backdrop-filter:blur(20px);border-radius:16px;padding:10px 16px;display:none;align-items:center;gap:12px;z-index:95;box-shadow:0 -4px 20px rgba(0,0,0,0.2);}
+.mini-player.visible{display:flex}
+.mini-art{width:36px;height:36px;border-radius:8px;flex-shrink:0;overflow:hidden}
+.mini-info{flex:1;min-width:0}
+.mini-title{font-size:13px;font-weight:500;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-artist{font-size:11px;color:rgba(255,255,255,0.45);margin-top:1px}
+.mini-controls{display:flex;align-items:center;gap:10px}
+.mini-play{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer}
 </style>
+
 </head>
 <body>
 
-<!-- ══════════ SVG DEFS ══════════ -->
+<!-- ── AUTH EKRANI ── -->
+
+<div class="auth-screen show" id="auth-screen">
+  <div class="auth-logo">aur<span>a</span></div>
+  <div class="auth-sub">Arkadaşlarınla bağlan, büyü 🌱</div>
+
+  <div class="auth-tabs" style="width:100%;">
+    <div class="auth-tab active" id="tab-login" onclick="switchTab('login')">Giriş Yap</div>
+    <div class="auth-tab" id="tab-register" onclick="switchTab('register')">Kayıt Ol</div>
+  </div>
+
+  <!-- Giriş formu -->
+
+  <div id="form-login" style="width:100%">
+    <input class="auth-input" id="login-email" type="email" placeholder="E-posta adresi">
+    <input class="auth-input" id="login-pass" type="password" placeholder="Şifre" onkeydown="if(event.key==='Enter')loginUser()">
+    <button class="auth-btn" onclick="loginUser()">
+      <span id="login-text">Giriş Yap</span>
+      <div class="auth-loading" id="login-loading"></div>
+    </button>
+    <div class="auth-err" id="login-err"></div>
+  </div>
+
+  <!-- Kayıt formu -->
+
+  <div id="form-register" style="width:100%;display:none;">
+    <input class="auth-input" id="reg-name" type="text" placeholder="Adın (görünen isim)" maxlength="24">
+    <input class="auth-input" id="reg-email" type="email" placeholder="E-posta adresi">
+    <input class="auth-input" id="reg-pass" type="password" placeholder="Şifre (en az 6 karakter)" onkeydown="if(event.key==='Enter')registerUser()">
+    <button class="auth-btn" onclick="registerUser()">
+      <span id="reg-text">Hesap Oluştur</span>
+      <div class="auth-loading" id="reg-loading"></div>
+    </button>
+    <div class="auth-err" id="reg-err"></div>
+  </div>
+</div>
+
+<!-- ══ SVG DEFS ══ -->
+
 <svg width="0" height="0" style="position:absolute;overflow:hidden">
 <defs>
-
-<!-- COIN -->
-<symbol id="s-coin" viewBox="0 0 32 32">
-  <circle cx="16" cy="16" r="13" fill="#FF9500"/>
-  <circle cx="16" cy="16" r="9.5" fill="#FFBF00" opacity=".55"/>
-  <circle cx="16" cy="16" r="6" fill="#FF8C00" opacity=".4"/>
-  <line x1="16" y1="2.5" x2="16" y2="5.5" stroke="#FFD60A" stroke-width="1.6" stroke-linecap="round"/>
-  <line x1="26.4" y1="8" x2="24" y2="9.4" stroke="#FFD60A" stroke-width="1.6" stroke-linecap="round"/>
-  <line x1="29.5" y1="16" x2="26.5" y2="16" stroke="#FFD60A" stroke-width="1.6" stroke-linecap="round"/>
-  <text x="16" y="20.5" text-anchor="middle" font-size="9" font-weight="800" fill="white" font-family="sans-serif" opacity=".9">A</text>
-</symbol>
-
-<!-- FLAME -->
-<symbol id="s-flame" viewBox="0 0 40 44">
-  <path d="M20 3 C20 3 28 12 28 18.5 C28 21 26.5 22.5 24.5 23.5 C25.5 20 22.5 16.5 22.5 16.5 C22.5 16.5 19.5 21.5 17 23 C14.5 24.5 12.5 27 12.5 30.5 C12.5 34.5 15.5 38 20 38 C24.5 38 27.5 34.5 27.5 30.5 C27.5 28 26 26 24 24.5 C28 22.5 30 19 30 15 C30 9 25 3 20 3Z" fill="#FF6B00"/>
-  <path d="M20 20 C20 20 23 24.5 23 28 C23 30.3 21.7 32.2 20 32.2 C18.3 32.2 17 30.3 17 28 C17 24.8 20 20 20 20Z" fill="#FFD60A"/>
-  <path d="M20 3 C20 3 23 7 25 11 C21 10 18 12 18 12 C19 8 20 3 20 3Z" fill="#FF9500" opacity=".5"/>
-</symbol>
-
-<!-- BRAIN -->
-<symbol id="s-brain" viewBox="0 0 36 36">
-  <path d="M13 10 C10 10 7 12.5 7 16 C7 17.8 7.7 19.4 8.8 20.5 C7.8 21.4 7 22.8 7 24.3 C7 27 9.2 29 12 29 L12.5 29 C13.2 30.5 14.5 31.5 16.2 31.5 C17.2 31.5 18.1 31.1 18.8 30.5 C19.4 31.1 20.3 31.5 21.3 31.5 C23.4 31.5 25 29.8 25 27.8 L25 27.5 C27.2 26.5 28.8 24.4 28.8 22 C28.8 21 28.5 20 28 19.2 C29.2 18 30 16.4 30 14.5 C30 11.4 27.5 9 24.4 9 C23.5 9 22.7 9.2 22 9.6 C21 9.2 20 9 19 9 C16.5 9 14.4 9.8 13 10Z" fill="none" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="18" y1="13" x2="18" y2="24" stroke="#AF52DE" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="13.5" y1="17" x2="22.5" y2="17" stroke="#AF52DE" stroke-width="1.5" stroke-linecap="round"/>
-  <circle cx="18" cy="12" r="2" fill="#AF52DE"/>
-  <circle cx="13" cy="21" r="1.5" fill="#C77DFF" opacity=".6"/>
-  <circle cx="23" cy="21" r="1.5" fill="#C77DFF" opacity=".6"/>
-</symbol>
-
-<!-- LIGHTNING -->
-<symbol id="s-zap" viewBox="0 0 32 36">
-  <path d="M21 4 L10 20 H18.5 L11 34 L27 14.5 H18.5 Z" fill="#FFD60A" stroke="#FF9500" stroke-width="1.3" stroke-linejoin="round"/>
-  <path d="M21 4 L18.5 14.5 H27 Z" fill="#FFF0A0" opacity=".5"/>
-</symbol>
-
-<!-- LEAF / avatar -->
-<symbol id="s-leaf" viewBox="0 0 32 32">
-  <line x1="16" y1="28" x2="16" y2="13" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-  <path d="M16 26 C16 26 8 23 6 15 C6 15 13 10 20 16 C21 18 21 23 16 26Z" fill="white" opacity=".92"/>
-  <path d="M16 19 C16 19 22 16 25 9 C25 9 20 7 15 13 C14 15 14 18 16 19Z" fill="white" opacity=".62"/>
-  <circle cx="16" cy="28" r="2" fill="white" opacity=".5"/>
-</symbol>
-
-<!-- NAV: HOME -->
-<symbol id="n-home" viewBox="0 0 28 28">
-  <path d="M4 13.5 L14 4 L24 13.5 V24 H18.5 V17.5 H9.5 V24 H4 Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-</symbol>
-<!-- NAV: CHAT -->
-<symbol id="n-chat" viewBox="0 0 28 28">
-  <path d="M4 5 H24 C25.1 5 26 5.9 26 7 V17.5 C26 18.6 25.1 19.5 24 19.5 H8.5 L3 25 V7 C3 5.9 3.9 5 5 5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="9" y1="11" x2="19" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-</symbol>
-<!-- NAV: GAME controller -->
-<symbol id="n-game" viewBox="0 0 28 28">
-  <rect x="3" y="9" width="22" height="13" rx="5" fill="none" stroke="currentColor" stroke-width="1.9"/>
-  <line x1="9" y1="14.5" x2="9" y2="18.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-  <line x1="7" y1="16.5" x2="11" y2="16.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-  <circle cx="19.5" cy="13.5" r="1.3" fill="currentColor"/>
-  <circle cx="22.5" cy="16.5" r="1.3" fill="currentColor"/>
-</symbol>
-<!-- NAV: MUSIC — note with wave -->
-<symbol id="n-music" viewBox="0 0 28 28">
-  <path d="M10 20 L10 8 L22 5 L22 17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="8" cy="20" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/>
-  <circle cx="20" cy="17" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/>
-</symbol>
-<symbol id="n-steps" viewBox="0 0 28 28">
-  <!-- heart shape -->
-  <path d="M14 23 C14 23 4 16 4 9.5 C4 7 6 5 8.5 5 C10.5 5 12 6.2 14 8 C16 6.2 17.5 5 19.5 5 C22 5 24 7 24 9.5 C24 16 14 23 14 23Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- pulse / ECG line running across the heart -->
-  <polyline points="4,13 8,13 10,9 12,17 14.5,11 16.5,15 18,13 24,13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-</symbol>
-<!-- NAV: PERSON -->
-<symbol id="n-person" viewBox="0 0 28 28">
-  <circle cx="14" cy="9" r="4.5" fill="none" stroke="currentColor" stroke-width="1.9"/>
-  <path d="M5 26 C5 21.2 9.1 17.5 14 17.5 C18.9 17.5 23 21.2 23 26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
-</symbol>
-
-<!-- PUZZLE -->
-<symbol id="s-puzzle" viewBox="0 0 40 40">
-  <path d="M8 8 h9 v-2 a3 3 0 0 1 6 0 V8 h9 v9 h2 a3 3 0 0 1 0 6 H32 v9 H23 v-2 a3 3 0 0 0-6 0 V32 H8 V23 H6 a3 3 0 0 1 0-6 H8 Z" fill="none" stroke="#5B2D91" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-</symbol>
-
-<!-- CARDS / memory -->
-<symbol id="s-cards" viewBox="0 0 40 40">
-  <rect x="5" y="13" width="20" height="24" rx="3.5" fill="#FFE8D0" stroke="#8C4A00" stroke-width="1.8"/>
-  <rect x="12" y="6" width="20" height="24" rx="3.5" fill="#FFCFA0" stroke="#8C4A00" stroke-width="1.8"/>
-  <line x1="16" y1="15" x2="28" y2="15" stroke="#8C4A00" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="16" y1="20" x2="24" y2="20" stroke="#8C4A00" stroke-width="1.5" stroke-linecap="round"/>
-  <circle cx="22" cy="25" r="2.5" fill="#FF9500" opacity=".5"/>
-</symbol>
-
-<!-- WORD / Aa -->
-<symbol id="s-word" viewBox="0 0 40 40">
-  <rect x="4" y="6" width="32" height="28" rx="5" fill="#EDE0FF" stroke="#5B2D91" stroke-width="1.8"/>
-  <text x="13" y="27" font-size="17" font-weight="800" fill="#5B2D91" font-family="sans-serif">Aa</text>
-</symbol>
-
-<!-- MEDALS -->
-<symbol id="s-gold" viewBox="0 0 30 30">
-  <circle cx="15" cy="15" r="12" fill="#FFD60A"/>
-  <circle cx="15" cy="15" r="8"  fill="#FFBF00" opacity=".5"/>
-  <text x="15" y="19.5" text-anchor="middle" font-size="10" font-weight="800" fill="#7A5000" font-family="sans-serif">1</text>
-</symbol>
-<symbol id="s-silver" viewBox="0 0 30 30">
-  <circle cx="15" cy="15" r="12" fill="#B0B0B8"/>
-  <circle cx="15" cy="15" r="8"  fill="#D0D0D8" opacity=".5"/>
-  <text x="15" y="19.5" text-anchor="middle" font-size="10" font-weight="800" fill="#444" font-family="sans-serif">2</text>
-</symbol>
-<symbol id="s-bronze" viewBox="0 0 30 30">
-  <circle cx="15" cy="15" r="12" fill="#CD7F32"/>
-  <circle cx="15" cy="15" r="8"  fill="#E8A060" opacity=".5"/>
-  <text x="15" y="19.5" text-anchor="middle" font-size="10" font-weight="800" fill="#5A2D00" font-family="sans-serif">3</text>
-</symbol>
-
-<!-- AVATAR ILLUSTRATIONS (52×52 circles) -->
-<!-- av-flower: warm peach bg, orange flower -->
-<symbol id="av-flower" viewBox="0 0 52 52">
-  <circle cx="26" cy="26" r="26" fill="#FFE8D0"/>
-  <ellipse cx="26" cy="13" rx="4.5" ry="6.5" fill="#FF6B00" opacity=".8"/>
-  <ellipse cx="26" cy="39" rx="4.5" ry="6.5" fill="#FF6B00" opacity=".8"/>
-  <ellipse cx="13" cy="26" rx="6.5" ry="4.5" fill="#FF9500" opacity=".8"/>
-  <ellipse cx="39" cy="26" rx="6.5" ry="4.5" fill="#FF9500" opacity=".8"/>
-  <ellipse cx="17" cy="17" rx="3.8" ry="5.8" fill="#FFBF00" opacity=".7" transform="rotate(-45 17 17)"/>
-  <ellipse cx="35" cy="35" rx="3.8" ry="5.8" fill="#FFBF00" opacity=".7" transform="rotate(-45 35 35)"/>
-  <ellipse cx="35" cy="17" rx="3.8" ry="5.8" fill="#FFBF00" opacity=".7" transform="rotate(45 35 17)"/>
-  <ellipse cx="17" cy="35" rx="3.8" ry="5.8" fill="#FFBF00" opacity=".7" transform="rotate(45 17 35)"/>
-  <circle cx="26" cy="26" r="7.5" fill="#FF6B00"/>
-  <circle cx="26" cy="26" r="4.5" fill="#FFD60A"/>
-  <circle cx="24.5" cy="24.5" r="1.5" fill="white" opacity=".5"/>
-</symbol>
-
-<!-- av-mountain: sky blue, geometric peaks -->
-<symbol id="av-mountain" viewBox="0 0 52 52">
-  <circle cx="26" cy="26" r="26" fill="#D6EEFF"/>
-  <polygon points="26,9 8,42 44,42" fill="#007AFF" opacity=".75"/>
-  <polygon points="26,9 20,21 32,21" fill="white" opacity=".88"/>
-  <polygon points="39,19 27,42 51,42" fill="#34AADC" opacity=".55"/>
-  <polygon points="39,19 34.5,28 43.5,28" fill="white" opacity=".7"/>
-  <circle cx="26" cy="9" r="2.5" fill="white" opacity=".7"/>
-</symbol>
-
-<!-- av-plant: mint green, cute potted plant -->
-<symbol id="av-plant" viewBox="0 0 52 52">
-  <circle cx="26" cy="26" r="26" fill="#C8FAE0"/>
-  <line x1="26" y1="41" x2="26" y2="20" stroke="#1A8050" stroke-width="2.8" stroke-linecap="round"/>
-  <path d="M26 29 C26 29 15 27 12 18 C12 18 20 13 27.5 21 C27.5 21 29 26 26 29Z" fill="#30D158"/>
-  <path d="M26 23 C26 23 35 19 39 11 C39 11 33 7 26 16 C24 19 24 22 26 23Z" fill="#34C759" opacity=".8"/>
-  <path d="M22 41 L23.5 36 H28.5 L30 41 Z" fill="#FF9500"/>
-  <rect x="20.5" y="40" width="11" height="3" rx="2" fill="#FF6B00"/>
-</symbol>
-
-<!-- av-wave: lavender bg, sound waves -->
-<symbol id="av-wave" viewBox="0 0 52 52">
-  <circle cx="26" cy="26" r="26" fill="#EEE0FF"/>
-  <path d="M15 31 C15 31 18 25 26 25 C34 25 37 31 37 31" fill="none" stroke="#AF52DE" stroke-width="2.4" stroke-linecap="round"/>
-  <path d="M10 35 C10 35 16 25.5 26 25.5 C36 25.5 42 35 42 35" fill="none" stroke="#BF5AF2" stroke-width="2" stroke-linecap="round" opacity=".5"/>
-  <path d="M20 22 C20 22 21.5 17 26 17 C30.5 17 32 22 32 22" fill="none" stroke="#AF52DE" stroke-width="2.2" stroke-linecap="round" opacity=".8"/>
-  <circle cx="26" cy="16" r="3" fill="#AF52DE"/>
-  <circle cx="26" cy="16" r="1.5" fill="white" opacity=".5"/>
-</symbol>
-
-<!-- av-cloud: pink bg, cloud with rain -->
-<symbol id="av-cloud" viewBox="0 0 52 52">
-  <circle cx="26" cy="26" r="26" fill="#FFD6DC"/>
-  <circle cx="22" cy="26" r="8" fill="white" opacity=".92"/>
-  <circle cx="30" cy="24" r="10" fill="white" opacity=".92"/>
-  <circle cx="17" cy="30" r="6" fill="white" opacity=".92"/>
-  <circle cx="36" cy="29" r="7" fill="white" opacity=".92"/>
-  <rect x="13" y="29" width="26" height="7" fill="white" opacity=".92"/>
-  <line x1="19" y1="37" x2="17" y2="42" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round"/>
-  <line x1="26" y1="38" x2="24" y2="43" stroke="#007AFF" stroke-width="2.2" stroke-linecap="round"/>
-  <line x1="33" y1="37" x2="31" y2="42" stroke="#34AADC" stroke-width="2.2" stroke-linecap="round"/>
-</symbol>
-
-<!-- SHOP: dragon face -->
-<symbol id="sh-dragon" viewBox="0 0 52 52">
-  <circle cx="26" cy="26" r="24" fill="#F0E0FF"/>
-  <path d="M18 16 C14 10 12 8 14 6 L19 12" fill="#AF52DE" opacity=".7"/>
-  <path d="M34 16 C38 10 40 8 38 6 L33 12" fill="#AF52DE" opacity=".7"/>
-  <ellipse cx="26" cy="28" rx="14" ry="11" fill="#AF52DE"/>
-  <ellipse cx="26" cy="28" rx="10" ry="7.5" fill="#BF5AF2" opacity=".5"/>
-  <circle cx="20.5" cy="25" r="3.5" fill="white"/>
-  <circle cx="31.5" cy="25" r="3.5" fill="white"/>
-  <circle cx="21.5" cy="25.5" r="2" fill="#4A1080"/>
-  <circle cx="32.5" cy="25.5" r="2" fill="#4A1080"/>
-  <circle cx="22" cy="25" r="0.8" fill="white"/>
-  <circle cx="33" cy="25" r="0.8" fill="white"/>
-  <ellipse cx="22.5" cy="31" rx="1.8" ry="1.1" fill="#8C1AAA" opacity=".45"/>
-  <ellipse cx="29.5" cy="31" rx="1.8" ry="1.1" fill="#8C1AAA" opacity=".45"/>
-  <path d="M8 22 C4 18 3 24 7 28 L13 25" fill="#C77DFF" opacity=".45"/>
-  <path d="M44 22 C48 18 49 24 45 28 L39 25" fill="#C77DFF" opacity=".45"/>
-</symbol>
-
-<!-- SHOP: floral theme -->
-<symbol id="sh-floral" viewBox="0 0 52 52">
-  <circle cx="26" cy="26" r="24" fill="#FFF0F5"/>
-  <ellipse cx="26" cy="12" rx="5.5" ry="7.5" fill="#FF2D55" opacity=".8"/>
-  <ellipse cx="26" cy="40" rx="5.5" ry="7.5" fill="#FF2D55" opacity=".8"/>
-  <ellipse cx="12" cy="26" rx="7.5" ry="5.5" fill="#FF6B9D" opacity=".8"/>
-  <ellipse cx="40" cy="26" rx="7.5" ry="5.5" fill="#FF6B9D" opacity=".8"/>
-  <ellipse cx="15" cy="15" rx="4" ry="6.5" fill="#FF9DC5" opacity=".7" transform="rotate(-45 15 15)"/>
-  <ellipse cx="37" cy="37" rx="4" ry="6.5" fill="#FF9DC5" opacity=".7" transform="rotate(-45 37 37)"/>
-  <ellipse cx="37" cy="15" rx="4" ry="6.5" fill="#FF9DC5" opacity=".7" transform="rotate(45 37 15)"/>
-  <ellipse cx="15" cy="37" rx="4" ry="6.5" fill="#FF9DC5" opacity=".7" transform="rotate(45 15 37)"/>
-  <circle cx="26" cy="26" r="8" fill="#FF2D55"/>
-  <circle cx="26" cy="26" r="4.5" fill="#FFD60A"/>
-  <circle cx="24.5" cy="24.5" r="1.5" fill="white" opacity=".5"/>
-</symbol>
-
-<!-- SHOP: night frame -->
-<symbol id="sh-night" viewBox="0 0 52 52">
-  <circle cx="26" cy="26" r="24" fill="#1C1C2E"/>
-  <path d="M33 14 C24 14 17 21 17 30 C17 36.5 21 41.5 27.5 43 C18.5 42 11 34.5 11 25.5 C11 16 18.5 8.5 28 8.5 C29.5 8.5 31 8.8 33 10 Z" fill="#FFD60A"/>
-  <circle cx="37" cy="17" r="2"   fill="white"/>
-  <circle cx="42" cy="28" r="1.3" fill="white" opacity=".7"/>
-  <circle cx="33" cy="39" r="1.5" fill="white" opacity=".6"/>
-  <circle cx="20" cy="13" r="1.3" fill="white" opacity=".8"/>
-  <circle cx="40" cy="38" r="2"   fill="#FFD60A" opacity=".5"/>
-  <circle cx="15" cy="36" r="1.2" fill="white" opacity=".4"/>
-</symbol>
-
-<!-- SHOP: star badge -->
-<symbol id="sh-star" viewBox="0 0 52 52">
-  <circle cx="26" cy="26" r="24" fill="#FFF8D0"/>
-  <polygon points="26,8 29.8,20 42,20 32.2,27.2 35.5,39 26,32 16.5,39 19.8,27.2 10,20 22.2,20" fill="#FFD60A" stroke="#FF9500" stroke-width="1.3" stroke-linejoin="round"/>
-  <polygon points="26,8 28,15 29.8,20" fill="white" opacity=".45"/>
-  <circle cx="26" cy="22" r="3" fill="white" opacity=".25"/>
-</symbol>
-
-<!-- TASK icons -->
-<symbol id="s-meditate" viewBox="0 0 28 28">
-  <circle cx="14" cy="7" r="3" fill="#007AFF" opacity=".85"/>
-  <path d="M10 11.5 C8 14 8 18 10 21 L12 21" stroke="#007AFF" stroke-width="1.9" stroke-linecap="round" fill="none"/>
-  <path d="M18 11.5 C20 14 20 18 18 21 L16 21" stroke="#007AFF" stroke-width="1.9" stroke-linecap="round" fill="none"/>
-  <path d="M12 21 Q14 23 16 21" stroke="#007AFF" stroke-width="1.9" stroke-linecap="round" fill="none"/>
-  <circle cx="14" cy="7" r="5.5" fill="none" stroke="#007AFF" stroke-width="1" opacity=".35"/>
-  <circle cx="14" cy="7" r="7.5" fill="none" stroke="#007AFF" stroke-width=".7" opacity=".18"/>
-</symbol>
-<symbol id="s-msgtask" viewBox="0 0 28 28">
-  <path d="M4 5.5 H24 C25.1 5.5 26 6.4 26 7.5 V17 C26 18.1 25.1 19 24 19 H9 L4 24 V7.5 C4 6.4 4.9 5.5 6 5.5Z" fill="none" stroke="#34C759" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-  <line x1="9" y1="11" x2="19" y2="11" stroke="#34C759" stroke-width="1.5" stroke-linecap="round"/>
-  <line x1="9" y1="15" x2="15" y2="15" stroke="#34C759" stroke-width="1.5" stroke-linecap="round"/>
-</symbol>
-<symbol id="s-donetask" viewBox="0 0 28 28">
-  <circle cx="14" cy="14" r="11" fill="#FF6B00" opacity=".13"/>
-  <path d="M9 14 L12.5 17.5 L19 11" stroke="#FF6B00" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-</symbol>
-
+<symbol id="s-coin" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="#FF9500"/><circle cx="16" cy="16" r="9.5" fill="#FFBF00" opacity=".55"/><text x="16" y="20.5" text-anchor="middle" font-size="9" font-weight="800" fill="white" font-family="sans-serif" opacity=".9">A</text></symbol>
+<symbol id="s-flame" viewBox="0 0 40 44"><path d="M20 3 C20 3 28 12 28 18.5 C28 21 26.5 22.5 24.5 23.5 C25.5 20 22.5 16.5 22.5 16.5 C22.5 16.5 19.5 21.5 17 23 C14.5 24.5 12.5 27 12.5 30.5 C12.5 34.5 15.5 38 20 38 C24.5 38 27.5 34.5 27.5 30.5 C27.5 28 26 26 24 24.5 C28 22.5 30 19 30 15 C30 9 25 3 20 3Z" fill="#FF6B00"/><path d="M20 20 C20 20 23 24.5 23 28 C23 30.3 21.7 32.2 20 32.2 C18.3 32.2 17 30.3 17 28 C17 24.8 20 20 20 20Z" fill="#FFD60A"/></symbol>
+<symbol id="s-brain" viewBox="0 0 36 36"><path d="M13 10 C10 10 7 12.5 7 16 C7 17.8 7.7 19.4 8.8 20.5 C7.8 21.4 7 22.8 7 24.3 C7 27 9.2 29 12 29 L12.5 29 C13.2 30.5 14.5 31.5 16.2 31.5 C17.2 31.5 18.1 31.1 18.8 30.5 C19.4 31.1 20.3 31.5 21.3 31.5 C23.4 31.5 25 29.8 25 27.8 L25 27.5 C27.2 26.5 28.8 24.4 28.8 22 C28.8 21 28.5 20 28 19.2 C29.2 18 30 16.4 30 14.5 C30 11.4 27.5 9 24.4 9 C23.5 9 22.7 9.2 22 9.6 C21 9.2 20 9 19 9 C16.5 9 14.4 9.8 13 10Z" fill="none" stroke="#AF52DE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="18" y1="13" x2="18" y2="24" stroke="#AF52DE" stroke-width="1.5" stroke-linecap="round"/><line x1="13.5" y1="17" x2="22.5" y2="17" stroke="#AF52DE" stroke-width="1.5" stroke-linecap="round"/><circle cx="18" cy="12" r="2" fill="#AF52DE"/></symbol>
+<symbol id="s-zap" viewBox="0 0 32 36"><path d="M21 4 L10 20 H18.5 L11 34 L27 14.5 H18.5 Z" fill="#FFD60A" stroke="#FF9500" stroke-width="1.3" stroke-linejoin="round"/></symbol>
+<symbol id="s-leaf" viewBox="0 0 32 32"><line x1="16" y1="28" x2="16" y2="13" stroke="white" stroke-width="2.2" stroke-linecap="round"/><path d="M16 26 C16 26 8 23 6 15 C6 15 13 10 20 16 C21 18 21 23 16 26Z" fill="white" opacity=".92"/><path d="M16 19 C16 19 22 16 25 9 C25 9 20 7 15 13 C14 15 14 18 16 19Z" fill="white" opacity=".62"/></symbol>
+<symbol id="n-home" viewBox="0 0 28 28"><path d="M4 13.5 L14 4 L24 13.5 V24 H18.5 V17.5 H9.5 V24 H4 Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="n-chat" viewBox="0 0 28 28"><path d="M4 5 H24 C25.1 5 26 5.9 26 7 V17.5 C26 18.6 25.1 19.5 24 19.5 H8.5 L3 25 V7 C3 5.9 3.9 5 5 5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><line x1="9" y1="11" x2="19" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="n-game" viewBox="0 0 28 28"><rect x="3" y="9" width="22" height="13" rx="5" fill="none" stroke="currentColor" stroke-width="1.9"/><line x1="9" y1="14.5" x2="9" y2="18.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><line x1="7" y1="16.5" x2="11" y2="16.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="19.5" cy="13.5" r="1.3" fill="currentColor"/><circle cx="22.5" cy="16.5" r="1.3" fill="currentColor"/></symbol>
+<symbol id="n-music" viewBox="0 0 28 28"><path d="M10 20 L10 8 L22 5 L22 17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="20" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/><circle cx="20" cy="17" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/></symbol>
+<symbol id="n-steps" viewBox="0 0 28 28"><path d="M14 23 C14 23 4 16 4 9.5 C4 7 6 5 8.5 5 C10.5 5 12 6.2 14 8 C16 6.2 17.5 5 19.5 5 C22 5 24 7 24 9.5 C24 16 14 23 14 23Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><polyline points="4,13 8,13 10,9 12,17 14.5,11 16.5,15 18,13 24,13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="n-person" viewBox="0 0 28 28"><circle cx="14" cy="9" r="4.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M5 26 C5 21.2 9.1 17.5 14 17.5 C18.9 17.5 23 21.2 23 26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+<symbol id="s-puzzle" viewBox="0 0 40 40"><path d="M8 8 h9 v-2 a3 3 0 0 1 6 0 V8 h9 v9 h2 a3 3 0 0 1 0 6 H32 v9 H23 v-2 a3 3 0 0 0-6 0 V32 H8 V23 H6 a3 3 0 0 1 0-6 H8 Z" fill="none" stroke="#5B2D91" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="s-cards" viewBox="0 0 40 40"><rect x="5" y="13" width="20" height="24" rx="3.5" fill="#FFE8D0" stroke="#8C4A00" stroke-width="1.8"/><rect x="12" y="6" width="20" height="24" rx="3.5" fill="#FFCFA0" stroke="#8C4A00" stroke-width="1.8"/></symbol>
+<symbol id="s-word" viewBox="0 0 40 40"><rect x="4" y="6" width="32" height="28" rx="5" fill="#EDE0FF" stroke="#5B2D91" stroke-width="1.8"/><text x="13" y="27" font-size="17" font-weight="800" fill="#5B2D91" font-family="sans-serif">Aa</text></symbol>
+<symbol id="s-gold" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="#FFD60A"/><text x="15" y="19.5" text-anchor="middle" font-size="10" font-weight="800" fill="#7A5000" font-family="sans-serif">1</text></symbol>
+<symbol id="s-silver" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="#B0B0B8"/><text x="15" y="19.5" text-anchor="middle" font-size="10" font-weight="800" fill="#444" font-family="sans-serif">2</text></symbol>
+<symbol id="s-bronze" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="#CD7F32"/><text x="15" y="19.5" text-anchor="middle" font-size="10" font-weight="800" fill="#5A2D00" font-family="sans-serif">3</text></symbol>
+<symbol id="av-flower" viewBox="0 0 52 52"><circle cx="26" cy="26" r="26" fill="#FFE8D0"/><ellipse cx="26" cy="13" rx="4.5" ry="6.5" fill="#FF6B00" opacity=".8"/><ellipse cx="26" cy="39" rx="4.5" ry="6.5" fill="#FF6B00" opacity=".8"/><ellipse cx="13" cy="26" rx="6.5" ry="4.5" fill="#FF9500" opacity=".8"/><ellipse cx="39" cy="26" rx="6.5" ry="4.5" fill="#FF9500" opacity=".8"/><circle cx="26" cy="26" r="7.5" fill="#FF6B00"/><circle cx="26" cy="26" r="4.5" fill="#FFD60A"/></symbol>
+<symbol id="av-mountain" viewBox="0 0 52 52"><circle cx="26" cy="26" r="26" fill="#D6EEFF"/><polygon points="26,9 8,42 44,42" fill="#007AFF" opacity=".75"/><polygon points="26,9 20,21 32,21" fill="white" opacity=".88"/></symbol>
+<symbol id="av-plant" viewBox="0 0 52 52"><circle cx="26" cy="26" r="26" fill="#C8FAE0"/><line x1="26" y1="41" x2="26" y2="20" stroke="#1A8050" stroke-width="2.8" stroke-linecap="round"/><path d="M26 29 C26 29 15 27 12 18 C12 18 20 13 27.5 21 C27.5 21 29 26 26 29Z" fill="#30D158"/></symbol>
+<symbol id="av-wave" viewBox="0 0 52 52"><circle cx="26" cy="26" r="26" fill="#EEE0FF"/><path d="M15 31 C15 31 18 25 26 25 C34 25 37 31 37 31" fill="none" stroke="#AF52DE" stroke-width="2.4" stroke-linecap="round"/><circle cx="26" cy="16" r="3" fill="#AF52DE"/></symbol>
+<symbol id="av-cloud" viewBox="0 0 52 52"><circle cx="26" cy="26" r="26" fill="#FFD6DC"/><circle cx="22" cy="26" r="8" fill="white" opacity=".92"/><circle cx="30" cy="24" r="10" fill="white" opacity=".92"/><rect x="13" y="29" width="26" height="7" fill="white" opacity=".92"/></symbol>
+<symbol id="sh-dragon" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="#F0E0FF"/><ellipse cx="26" cy="28" rx="14" ry="11" fill="#AF52DE"/><circle cx="20.5" cy="25" r="3.5" fill="white"/><circle cx="31.5" cy="25" r="3.5" fill="white"/><circle cx="21.5" cy="25.5" r="2" fill="#4A1080"/><circle cx="32.5" cy="25.5" r="2" fill="#4A1080"/></symbol>
+<symbol id="sh-floral" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="#FFF0F5"/><ellipse cx="26" cy="12" rx="5.5" ry="7.5" fill="#FF2D55" opacity=".8"/><ellipse cx="26" cy="40" rx="5.5" ry="7.5" fill="#FF2D55" opacity=".8"/><circle cx="26" cy="26" r="8" fill="#FF2D55"/></symbol>
+<symbol id="sh-night" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="#1C1C2E"/><path d="M33 14 C24 14 17 21 17 30 C17 36.5 21 41.5 27.5 43 C18.5 42 11 34.5 11 25.5 C11 16 18.5 8.5 28 8.5 C29.5 8.5 31 8.8 33 10 Z" fill="#FFD60A"/></symbol>
+<symbol id="sh-star" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="#FFF8D0"/><polygon points="26,8 29.8,20 42,20 32.2,27.2 35.5,39 26,32 16.5,39 19.8,27.2 10,20 22.2,20" fill="#FFD60A"/></symbol>
+<symbol id="s-meditate" viewBox="0 0 28 28"><circle cx="14" cy="7" r="3" fill="#007AFF" opacity=".85"/><path d="M10 11.5 C8 14 8 18 10 21 L12 21" stroke="#007AFF" stroke-width="1.9" stroke-linecap="round" fill="none"/><path d="M18 11.5 C20 14 20 18 18 21 L16 21" stroke="#007AFF" stroke-width="1.9" stroke-linecap="round" fill="none"/><path d="M12 21 Q14 23 16 21" stroke="#007AFF" stroke-width="1.9" stroke-linecap="round" fill="none"/></symbol>
+<symbol id="s-msgtask" viewBox="0 0 28 28"><path d="M4 5.5 H24 C25.1 5.5 26 6.4 26 7.5 V17 C26 18.1 25.1 19 24 19 H9 L4 24 V7.5 C4 6.4 4.9 5.5 6 5.5Z" fill="none" stroke="#34C759" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="s-donetask" viewBox="0 0 28 28"><circle cx="14" cy="14" r="11" fill="#FF6B00" opacity=".13"/><path d="M9 14 L12.5 17.5 L19 11" stroke="#FF6B00" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
 </defs>
 </svg>
 
 <div class="toast" id="toast"></div>
-
-<!-- FAB: yeni sohbet -->
-<div class="fab" id="fab" onclick="h.tap();showToast('Yeni sohbet başlatılıyor...')">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round">
-    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-    <line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/>
-  </svg>
+<div class="fab" id="fab" onclick="h.tap();showToast('Yeni sohbet yakında!')">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
 </div>
 
 <!-- ══ CHAT OVERLAY ══ -->
+
 <div id="chat-screen">
-  <div class="statusbar"><span>9:41</span><span>◉◉◉</span></div>
+  <div class="statusbar"><span id="chat-time">9:41</span><span>◉◉◉</span></div>
   <div class="chat-header">
     <div class="back-btn" onclick="closeChat()">←</div>
     <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;" id="chat-av"></div>
-    <div>
-      <div style="font-size:15px;font-weight:500;" id="chat-name">Elif</div>
-      <div style="font-size:11px;color:var(--green);">● çevrimiçi</div>
+    <div style="flex:1">
+      <div style="font-size:15px;font-weight:500;" id="chat-name">...</div>
+      <div style="font-size:11px;color:var(--green);" id="chat-status">● çevrimiçi</div>
+    </div>
+    <div class="fb-indicator">
+      <div class="fb-dot" id="chat-fb-dot"></div>
+      <span id="chat-fb-label" style="font-size:10px;color:var(--sub);">...</span>
     </div>
   </div>
   <div class="chat-messages" id="chat-msgs"></div>
+  <div class="typing-wrap" id="typing-wrap">
+    <div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+  </div>
   <div class="chat-input-bar">
     <input class="chat-input" id="chat-input" placeholder="Mesaj yaz..." onkeydown="if(event.key==='Enter')sendMsg()">
     <div class="send-btn" onclick="sendMsg()">
@@ -556,26 +393,20 @@
 </div>
 
 <!-- ══ HOME ══ -->
+
 <div class="screen active" id="screen-home">
-  <div class="statusbar"><span>9:41</span><span>◉◉◉</span></div>
+  <div class="statusbar"><span id="home-time">9:41</span><span>◉◉◉</span></div>
   <div class="home-header">
     <div>
       <div class="aura-logo">aur<span>a</span></div>
-      <div style="font-size:13px;color:var(--sub);margin-top:2px;">Pazartesi, 11 Mart</div>
+      <div style="font-size:13px;color:var(--sub);margin-top:2px;" id="home-date">Çarşamba, 11 Mart</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;">
-      <div class="coins-badge">
-        <svg width="18" height="18"><use href="#s-coin"/></svg>
-        <span id="coin-display">340</span>
-      </div>
-      <div class="avatar-sm" onclick="goTo('profile')">
-        <svg width="24" height="24"><use href="#s-leaf"/></svg>
-      </div>
+      <div class="coins-badge"><svg width="18" height="18"><use href="#s-coin"/></svg><span id="coin-display">340</span></div>
+      <div class="avatar-sm" onclick="goTo('profile')"><svg width="24" height="24"><use href="#s-leaf"/></svg></div>
     </div>
   </div>
-
   <div class="scroll-area" style="margin-top:16px;">
-    <!-- STEPS -->
     <div class="card" style="cursor:pointer;" onclick="goTo('steps')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;">
         <div>
@@ -584,28 +415,15 @@
           <div style="font-size:12px;color:var(--sub);margin-top:2px;">hedef: 10,000 adım</div>
         </div>
         <div style="position:relative;">
-          <svg width="66" height="66" class="ring-svg">
-            <circle class="ring-track" cx="33" cy="33" r="26"/>
-            <circle class="ring-fill" cx="33" cy="33" r="26" stroke="#FF6B00" stroke-dasharray="163" stroke-dashoffset="52"/>
-          </svg>
+          <svg width="66" height="66" class="ring-svg"><circle class="ring-track" cx="33" cy="33" r="26"/><circle class="ring-fill" cx="33" cy="33" r="26" stroke="#FF6B00" stroke-dasharray="163" stroke-dashoffset="52"/></svg>
           <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:12px;font-weight:600;color:var(--accent);">68%</div>
         </div>
       </div>
       <div class="steps-visual">
-        <div class="step-bar filled" style="height:70%"></div>
-        <div class="step-bar filled" style="height:90%"></div>
-        <div class="step-bar filled" style="height:60%"></div>
-        <div class="step-bar filled" style="height:100%"></div>
-        <div class="step-bar filled" style="height:80%"></div>
-        <div class="step-bar filled" style="height:45%"></div>
-        <div class="step-bar partial" style="height:68%"></div>
+        <div class="step-bar filled" style="height:70%"></div><div class="step-bar filled" style="height:90%"></div><div class="step-bar filled" style="height:60%"></div><div class="step-bar filled" style="height:100%"></div><div class="step-bar filled" style="height:80%"></div><div class="step-bar filled" style="height:45%"></div><div class="step-bar partial" style="height:68%"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);">
-        <span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span>
-      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div>
     </div>
-
-    <!-- QUESTION -->
     <div class="section-title">Günün Sorusu</div>
     <div class="q-card">
       <div class="q-label"><svg width="18" height="18"><use href="#s-brain"/></svg>Genel Kültür</div>
@@ -617,148 +435,90 @@
         <div class="q-option" onclick="answerQ(this,false)">Arktik</div>
       </div>
     </div>
-
-    <!-- TASKS -->
     <div class="section-title">Görevler</div>
     <div class="card" style="padding:16px 20px;">
       <div class="task-item" id="task1" onclick="completeTask('task1',20)">
         <div class="task-check" id="check1"></div>
         <svg width="30" height="30" style="flex-shrink:0"><use href="#s-meditate"/></svg>
-        <div style="flex:1;">
-          <div class="task-text">10 dakika meditasyon yap</div>
-          <div style="font-size:11px;color:var(--sub);margin-top:1px;">Zihin &amp; Beden</div>
-        </div>
+        <div style="flex:1;"><div class="task-text">10 dakika meditasyon yap</div><div style="font-size:11px;color:var(--sub);margin-top:1px;">Zihin & Beden</div></div>
         <div class="task-reward-badge"><svg width="13" height="13"><use href="#s-coin"/></svg>20</div>
       </div>
       <div class="task-item" id="task2" onclick="completeTask('task2',15)">
         <div class="task-check" id="check2"></div>
         <svg width="30" height="30" style="flex-shrink:0"><use href="#s-msgtask"/></svg>
-        <div style="flex:1;">
-          <div class="task-text">Bir arkadaşına mesaj at</div>
-          <div style="font-size:11px;color:var(--sub);margin-top:1px;">Sosyal</div>
-        </div>
+        <div style="flex:1;"><div class="task-text">Bir arkadaşına mesaj at</div><div style="font-size:11px;color:var(--sub);margin-top:1px;">Sosyal</div></div>
         <div class="task-reward-badge"><svg width="13" height="13"><use href="#s-coin"/></svg>15</div>
       </div>
       <div class="task-item done" id="task3">
-        <div class="task-check" id="check3" style="background:var(--green);border-color:var(--green);">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-        </div>
+        <div class="task-check" style="background:var(--green);border-color:var(--green);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
         <svg width="30" height="30" style="flex-shrink:0"><use href="#s-donetask"/></svg>
-        <div style="flex:1;">
-          <div class="task-text" style="text-decoration:line-through;color:var(--sub);">Günlük soruyu cevapla</div>
-          <div style="font-size:11px;color:var(--sub);margin-top:1px;">Bilgi</div>
-        </div>
+        <div style="flex:1;"><div class="task-text" style="text-decoration:line-through;color:var(--sub);">Günlük soruyu cevapla</div><div style="font-size:11px;color:var(--sub);margin-top:1px;">Bilgi</div></div>
         <div class="task-reward-badge"><svg width="13" height="13"><use href="#s-coin"/></svg>25</div>
       </div>
     </div>
-
-    <!-- ARKADAŞ AKTİVİTE -->
     <div class="section-title">Arkadaşlar</div>
     <div class="card" style="padding:14px 20px;">
-      <div class="social-row">
-        <div class="social-av"><svg width="38" height="38"><use href="#av-plant"/></svg></div>
-        <div class="social-text"><b>Zeynep</b> bugün hedefini geçti</div>
-        <div class="social-stat">🏃 8,420</div>
-      </div>
-      <div class="social-row">
-        <div class="social-av"><svg width="38" height="38"><use href="#av-mountain"/></svg></div>
-        <div class="social-text"><b>Ahmet</b> 3 soruyu doğru bildi</div>
-        <div class="social-stat">🧠 +75</div>
-      </div>
-      <div class="social-row">
-        <div class="social-av"><svg width="38" height="38"><use href="#av-flower"/></svg></div>
-        <div class="social-text"><b>Elif</b> yeni rozet kazandı</div>
-        <div class="social-stat">⚡ Sprint</div>
-      </div>
+      <div class="social-row"><div class="social-av"><svg width="38" height="38"><use href="#av-plant"/></svg></div><div class="social-text"><b>Zeynep</b> bugün hedefini geçti</div><div class="social-stat">🏃 8,420</div></div>
+      <div class="social-row"><div class="social-av"><svg width="38" height="38"><use href="#av-mountain"/></svg></div><div class="social-text"><b>Ahmet</b> 3 soruyu doğru bildi</div><div class="social-stat">🧠 +75</div></div>
+      <div class="social-row"><div class="social-av"><svg width="38" height="38"><use href="#av-flower"/></svg></div><div class="social-text"><b>Elif</b> yeni rozet kazandı</div><div class="social-stat">⚡ Sprint</div></div>
     </div>
-
-    <!-- STREAK -->
     <div class="card" style="display:flex;align-items:center;gap:14px;">
       <svg width="54" height="54" style="flex-shrink:0"><use href="#s-flame"/></svg>
       <div>
         <div style="font-size:16px;font-weight:600;">7 Günlük Seri</div>
         <div style="font-size:12px;color:var(--sub);margin-top:2px;">Bu hafta hiç gün kaçırmadın!</div>
-        <div class="streak-dots">
-          <div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div>
-          <div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div>
-          <div class="streak-dot"></div>
-        </div>
+        <div class="streak-dots"><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div></div>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ══ MESSAGES ══ -->
+
 <div class="screen" id="screen-messages">
   <div class="statusbar"><span>9:41</span><span>◉◉◉</span></div>
   <div style="padding:0 18px 12px;">
-    <div class="section-title">Mesajlar</div>
-    <div style="background:var(--card);border-radius:14px;display:flex;align-items:center;gap:10px;padding:10px 14px;margin-bottom:14px;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-      <input style="border:none;background:none;outline:none;font-family:'DM Sans',sans-serif;font-size:14px;width:100%;color:var(--text);" placeholder="Ara...">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="section-title" style="margin-bottom:0;">Mesajlar</div>
+      <div class="fb-indicator"><div class="fb-dot" id="msg-fb-dot"></div><span id="msg-fb-label" style="font-size:11px;">Bağlanıyor...</span></div>
+    </div>
+    <!-- Oda seçici -->
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;" id="room-pills">
+      <div class="room-pill active" onclick="switchRoom('genel',this)">💬 Genel</div>
+      <div class="room-pill" onclick="switchRoom('oyun',this)">🎮 Oyun</div>
+      <div class="room-pill" onclick="switchRoom('muzik',this)">🎵 Müzik</div>
+      <div class="room-pill" onclick="switchRoom('spor',this)">🏃 Spor</div>
     </div>
   </div>
-  <div>
-    <div class="msg-item" onclick="openChat('Elif','av-flower')">
-      <div class="msg-avatar"><svg width="52" height="52"><use href="#av-flower"/></svg><div class="online-dot"></div></div>
-      <div class="msg-info"><div class="msg-name">Elif</div><div class="msg-preview">Bugün buluşuyor muyuz?</div></div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-        <div class="msg-time">14:23</div><div class="msg-unread">2</div>
-      </div>
-    </div>
-    <div class="msg-item" onclick="openChat('Ahmet','av-mountain')">
-      <div class="msg-avatar"><svg width="52" height="52"><use href="#av-mountain"/></svg></div>
-      <div class="msg-info"><div class="msg-name">Ahmet</div><div class="msg-preview">Oyunu bitirdim nihayet lol</div></div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><div class="msg-time">12:07</div></div>
-    </div>
-    <div class="msg-item" onclick="openChat('Zeynep','av-plant')">
-      <div class="msg-avatar"><svg width="52" height="52"><use href="#av-plant"/></svg><div class="online-dot"></div></div>
-      <div class="msg-info"><div class="msg-name">Zeynep</div><div class="msg-preview">O restoranı dene mutlaka</div></div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><div class="msg-time">Dün</div></div>
-    </div>
-    <div class="msg-item" onclick="openChat('Mert','av-wave')">
-      <div class="msg-avatar"><svg width="52" height="52"><use href="#av-wave"/></svg></div>
-      <div class="msg-info"><div class="msg-name">Mert</div><div class="msg-preview">Şu playlist'i dinle, çok iyi</div></div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><div class="msg-time">Pzt</div></div>
-    </div>
-    <div class="msg-item" onclick="openChat('Selin','av-cloud')">
-      <div class="msg-avatar"><svg width="52" height="52"><use href="#av-cloud"/></svg></div>
-      <div class="msg-info"><div class="msg-name">Selin</div><div class="msg-preview">Tamam görüşürüz</div></div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;"><div class="msg-time">Paz</div></div>
+  <!-- Gerçek zamanlı mesaj akışı -->
+  <div id="msg-list" style="flex:1;overflow-y:auto;padding:0 18px;">
+    <div style="text-align:center;padding:32px 0;color:var(--sub);font-size:13px;" id="msg-empty">
+      Henüz mesaj yok. İlk mesajı sen gönder! 💬
     </div>
   </div>
+  <!-- Hızlı mesaj gönder -->
+  <div style="padding:12px 18px 0;display:flex;align-items:center;gap:10px;border-top:1px solid var(--border);">
+    <input id="quick-input" class="chat-input" placeholder="Odaya mesaj yaz..." style="flex:1" onkeydown="if(event.key==='Enter')sendQuickMsg()">
+    <div class="send-btn" onclick="sendQuickMsg()" style="flex-shrink:0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M2 21L23 12 2 3v7l15 2-15 2z"/></svg>
+    </div>
+  </div>
+  <div style="height:12px;"></div>
 </div>
 
 <!-- ══ GAMES ══ -->
+
 <div class="screen" id="screen-games">
   <div class="statusbar"><span>9:41</span><span>◉◉◉</span></div>
   <div class="scroll-area">
     <div class="section-title">Oyunlar</div>
-    <div class="pill-row">
-      <div class="pill active-pill">Tümü</div>
-      <div class="pill">Kelime</div>
-      <div class="pill">Mantık</div>
-      <div class="pill">Hafıza</div>
-    </div>
+    <div class="pill-row"><div class="pill active-pill">Tümü</div><div class="pill">Kelime</div><div class="pill">Mantık</div><div class="pill">Hafıza</div></div>
     <div class="games-grid">
-      <div class="game-card gc1" onclick="showToast('Kelime Dünyası açılıyor...')">
-        <svg width="44" height="44"><use href="#s-word"/></svg>
-        <div><div class="game-name">Kelime Dünyası</div><div class="game-reward"><svg width="12" height="12"><use href="#s-coin"/></svg>5–25 / oyun</div></div>
-      </div>
-      <div class="game-card gc2" onclick="showToast('Hafıza Kartları açılıyor...')">
-        <svg width="44" height="44"><use href="#s-cards"/></svg>
-        <div><div class="game-name">Hafıza Kartları</div><div class="game-reward"><svg width="12" height="12"><use href="#s-coin"/></svg>10–30 / oyun</div></div>
-      </div>
-      <div class="game-card gc3" onclick="showToast('Bulmaca açılıyor...')">
-        <svg width="44" height="44"><use href="#s-puzzle"/></svg>
-        <div><div class="game-name">Bulmaca</div><div class="game-reward"><svg width="12" height="12"><use href="#s-coin"/></svg>15–40 / oyun</div></div>
-      </div>
-      <div class="game-card gc4" onclick="showToast('Hız Sorusu açılıyor...')">
-        <svg width="44" height="44"><use href="#s-zap"/></svg>
-        <div><div class="game-name">Hız Sorusu</div><div class="game-reward"><svg width="12" height="12"><use href="#s-coin"/></svg>20–50 / oyun</div></div>
-      </div>
+      <div class="game-card gc1" onclick="showToast('Kelime Dünyası açılıyor...')"><svg width="44" height="44"><use href="#s-word"/></svg><div><div class="game-name">Kelime Dünyası</div><div class="game-reward"><svg width="12" height="12"><use href="#s-coin"/></svg>5–25 / oyun</div></div></div>
+      <div class="game-card gc2" onclick="showToast('Hafıza Kartları açılıyor...')"><svg width="44" height="44"><use href="#s-cards"/></svg><div><div class="game-name">Hafıza Kartları</div><div class="game-reward"><svg width="12" height="12"><use href="#s-coin"/></svg>10–30 / oyun</div></div></div>
+      <div class="game-card gc3" onclick="showToast('Bulmaca açılıyor...')"><svg width="44" height="44"><use href="#s-puzzle"/></svg><div><div class="game-name">Bulmaca</div><div class="game-reward"><svg width="12" height="12"><use href="#s-coin"/></svg>15–40 / oyun</div></div></div>
+      <div class="game-card gc4" onclick="showToast('Hız Sorusu açılıyor...')"><svg width="44" height="44"><use href="#s-zap"/></svg><div><div class="game-name">Hız Sorusu</div><div class="game-reward"><svg width="12" height="12"><use href="#s-coin"/></svg>20–50 / oyun</div></div></div>
     </div>
-
     <div class="section-title">Mini Quiz</div>
     <div class="q-card">
       <div class="q-label"><svg width="18" height="18"><use href="#s-zap"/></svg>Günlük Meydan Okuma</div>
@@ -770,65 +530,32 @@
         <div class="q-option" onclick="answerGQ(this,false)">500,000 km</div>
       </div>
     </div>
-
     <div class="section-title">Sıralama</div>
     <div class="card" style="padding:14px 18px;">
-      <div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border);">
-        <svg width="30" height="30"><use href="#s-gold"/></svg>
-        <svg width="38" height="38" style="border-radius:50%;overflow:hidden;flex-shrink:0;"><use href="#av-wave"/></svg>
-        <div style="flex:1;font-size:14px;font-weight:500;">Ayşe K.</div>
-        <div style="font-weight:600;font-size:14px;color:var(--accent);display:flex;align-items:center;gap:4px;"><svg width="14" height="14"><use href="#s-coin"/></svg>1,240</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:11px;padding:10px 6px;border-bottom:1px solid var(--border);background:rgba(255,107,0,0.05);border-radius:10px;">
-        <svg width="30" height="30"><use href="#s-silver"/></svg>
-        <svg width="38" height="38" style="border-radius:50%;overflow:hidden;flex-shrink:0;"><use href="#av-plant"/></svg>
-        <div style="flex:1;font-size:14px;font-weight:500;">Sen</div>
-        <div style="font-weight:600;font-size:14px;color:var(--accent);display:flex;align-items:center;gap:4px;"><svg width="14" height="14"><use href="#s-coin"/></svg>340</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:11px;padding:10px 0;">
-        <svg width="30" height="30"><use href="#s-bronze"/></svg>
-        <svg width="38" height="38" style="border-radius:50%;overflow:hidden;flex-shrink:0;"><use href="#av-cloud"/></svg>
-        <div style="flex:1;font-size:14px;font-weight:500;">Burak T.</div>
-        <div style="font-weight:600;font-size:14px;color:var(--sub);display:flex;align-items:center;gap:4px;"><svg width="14" height="14"><use href="#s-coin"/></svg>280</div>
-      </div>
+      <div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border);"><svg width="30" height="30"><use href="#s-gold"/></svg><svg width="38" height="38" style="border-radius:50%;overflow:hidden;flex-shrink:0;"><use href="#av-wave"/></svg><div style="flex:1;font-size:14px;font-weight:500;">Ayşe K.</div><div style="font-weight:600;font-size:14px;color:var(--accent);display:flex;align-items:center;gap:4px;"><svg width="14" height="14"><use href="#s-coin"/></svg>1,240</div></div>
+      <div style="display:flex;align-items:center;gap:11px;padding:10px 6px;background:rgba(255,107,0,0.05);border-radius:10px;border-bottom:1px solid var(--border);"><svg width="30" height="30"><use href="#s-silver"/></svg><svg width="38" height="38" style="border-radius:50%;overflow:hidden;flex-shrink:0;"><use href="#av-plant"/></svg><div style="flex:1;font-size:14px;font-weight:500;" id="leaderboard-me">Sen</div><div style="font-weight:600;font-size:14px;color:var(--accent);display:flex;align-items:center;gap:4px;"><svg width="14" height="14"><use href="#s-coin"/></svg>340</div></div>
+      <div style="display:flex;align-items:center;gap:11px;padding:10px 0;"><svg width="30" height="30"><use href="#s-bronze"/></svg><svg width="38" height="38" style="border-radius:50%;overflow:hidden;flex-shrink:0;"><use href="#av-cloud"/></svg><div style="flex:1;font-size:14px;font-weight:500;">Burak T.</div><div style="font-weight:600;font-size:14px;color:var(--sub);display:flex;align-items:center;gap:4px;"><svg width="14" height="14"><use href="#s-coin"/></svg>280</div></div>
     </div>
   </div>
 </div>
 
 <!-- ══ STEPS ══ -->
+
 <div class="screen" id="screen-steps">
   <div class="statusbar"><span>9:41</span><span>◉◉◉</span></div>
   <div class="scroll-area">
     <div class="section-title">Aktivite</div>
     <div style="display:flex;flex-direction:column;align-items:center;padding:8px 0 6px;">
       <div class="big-ring">
-        <svg width="180" height="180">
-          <circle class="ring-track" cx="90" cy="90" r="76" style="stroke-width:11;"/>
-          <circle class="ring-fill" cx="90" cy="90" r="76" stroke="#FF6B00" stroke-dasharray="478" stroke-dashoffset="153" style="stroke-width:11;"/>
-        </svg>
-        <div class="ring-center">
-          <div class="ring-steps">6,842</div>
-          <div class="ring-goal">/ 10,000 adım</div>
-          <div style="font-size:12px;font-weight:600;color:var(--accent);margin-top:4px;">68%</div>
-        </div>
+        <svg width="180" height="180"><circle class="ring-track" cx="90" cy="90" r="76" style="stroke-width:11;"/><circle class="ring-fill" cx="90" cy="90" r="76" stroke="#FF6B00" stroke-dasharray="478" stroke-dashoffset="153" style="stroke-width:11;"/></svg>
+        <div class="ring-center"><div class="ring-steps">6,842</div><div class="ring-goal">/ 10,000 adım</div><div style="font-size:12px;font-weight:600;color:var(--accent);margin-top:4px;">68%</div></div>
       </div>
     </div>
-
     <div class="card" style="display:flex;justify-content:space-around;padding:20px;">
-      <div style="text-align:center;">
-        <svg width="64" height="64" class="ring-svg"><circle class="ring-track" cx="32" cy="32" r="25"/><circle class="ring-fill" cx="32" cy="32" r="25" stroke="#FF6B00" stroke-dasharray="157" stroke-dashoffset="50"/></svg>
-        <div style="font-size:12px;font-weight:600;margin-top:4px;">Adım</div><div style="font-size:10px;color:var(--sub);">6,842</div>
-      </div>
-      <div style="text-align:center;">
-        <svg width="64" height="64" class="ring-svg"><circle class="ring-track" cx="32" cy="32" r="25"/><circle class="ring-fill" cx="32" cy="32" r="25" stroke="#007AFF" stroke-dasharray="157" stroke-dashoffset="78"/></svg>
-        <div style="font-size:12px;font-weight:600;margin-top:4px;">Kalori</div><div style="font-size:10px;color:var(--sub);">312 kcal</div>
-      </div>
-      <div style="text-align:center;">
-        <svg width="64" height="64" class="ring-svg"><circle class="ring-track" cx="32" cy="32" r="25"/><circle class="ring-fill" cx="32" cy="32" r="25" stroke="#FF9500" stroke-dasharray="157" stroke-dashoffset="110"/></svg>
-        <div style="font-size:12px;font-weight:600;margin-top:4px;">Aktif Süre</div><div style="font-size:10px;color:var(--sub);">42 dk</div>
-      </div>
+      <div style="text-align:center;"><svg width="64" height="64" class="ring-svg"><circle class="ring-track" cx="32" cy="32" r="25"/><circle class="ring-fill" cx="32" cy="32" r="25" stroke="#FF6B00" stroke-dasharray="157" stroke-dashoffset="50"/></svg><div style="font-size:12px;font-weight:600;margin-top:4px;">Adım</div><div style="font-size:10px;color:var(--sub);">6,842</div></div>
+      <div style="text-align:center;"><svg width="64" height="64" class="ring-svg"><circle class="ring-track" cx="32" cy="32" r="25"/><circle class="ring-fill" cx="32" cy="32" r="25" stroke="#007AFF" stroke-dasharray="157" stroke-dashoffset="78"/></svg><div style="font-size:12px;font-weight:600;margin-top:4px;">Kalori</div><div style="font-size:10px;color:var(--sub);">312 kcal</div></div>
+      <div style="text-align:center;"><svg width="64" height="64" class="ring-svg"><circle class="ring-track" cx="32" cy="32" r="25"/><circle class="ring-fill" cx="32" cy="32" r="25" stroke="#FF9500" stroke-dasharray="157" stroke-dashoffset="110"/></svg><div style="font-size:12px;font-weight:600;margin-top:4px;">Aktif Süre</div><div style="font-size:10px;color:var(--sub);">42 dk</div></div>
     </div>
-
     <div class="section-title">Bu Hafta</div>
     <div class="card">
       <div class="week-chart">
@@ -846,58 +573,17 @@
         <div style="text-align:center;"><div style="font-size:16px;font-weight:600;">7.7 km</div><div style="font-size:10px;color:var(--sub);">ort. mesafe</div></div>
       </div>
     </div>
-
-    <div class="section-title">Rozetler</div>
-    <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:10px;">
-      <div style="flex-shrink:0;background:var(--card);border-radius:18px;padding:14px 16px;text-align:center;">
-        <svg width="46" height="46" viewBox="0 0 46 46">
-          <circle cx="23" cy="23" r="21" fill="#FFE8D0"/>
-          <circle cx="23" cy="12" r="3.5" fill="#FF6B00"/>
-          <path d="M23 15.5 L19 23 L15 29" stroke="#FF6B00" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-          <path d="M23 15.5 L26 22 L32 26.5" stroke="#FF6B00" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-          <line x1="19" y1="21" x2="28" y2="21" stroke="#FF6B00" stroke-width="2.5" stroke-linecap="round"/>
-        </svg>
-        <div style="font-size:11px;font-weight:600;margin-top:6px;">İlk 10K</div>
-        <div style="font-size:10px;color:var(--green);">Kazanıldı</div>
-      </div>
-      <div style="flex-shrink:0;background:var(--card);border-radius:18px;padding:14px 16px;text-align:center;">
-        <svg width="46" height="46" viewBox="0 0 46 46">
-          <circle cx="23" cy="23" r="21" fill="#FFE8D0"/>
-          <g transform="translate(8,3)"><svg width="30" height="36"><use href="#s-flame"/></svg></g>
-        </svg>
-        <div style="font-size:11px;font-weight:600;margin-top:6px;">7 Günlük</div>
-        <div style="font-size:10px;color:var(--green);">Kazanıldı</div>
-      </div>
-      <div style="flex-shrink:0;background:var(--card);border-radius:18px;padding:14px 16px;text-align:center;opacity:.38;">
-        <svg width="46" height="46" viewBox="0 0 46 46">
-          <circle cx="23" cy="23" r="21" fill="#F2F2F7"/>
-          <g transform="translate(7,5)"><svg width="32" height="36"><use href="#s-zap"/></svg></g>
-        </svg>
-        <div style="font-size:11px;font-weight:600;margin-top:6px;">Sprint</div>
-        <div style="font-size:10px;color:var(--sub);">Kilitli</div>
-      </div>
-      <div style="flex-shrink:0;background:var(--card);border-radius:18px;padding:14px 16px;text-align:center;opacity:.38;">
-        <svg width="46" height="46" viewBox="0 0 46 46">
-          <circle cx="23" cy="23" r="21" fill="#F2F2F7"/>
-          <path d="M16 11 H30 V22 C30 26.5 27 29.5 23 29.5 C19 29.5 16 26.5 16 22 Z" fill="none" stroke="#8E8E93" stroke-width="1.9"/>
-          <path d="M16 15 C13 15 11 17 11 19.5 C11 22 13 24 16 24" fill="none" stroke="#8E8E93" stroke-width="1.9"/>
-          <path d="M30 15 C33 15 35 17 35 19.5 C35 22 33 24 30 24" fill="none" stroke="#8E8E93" stroke-width="1.9"/>
-          <line x1="23" y1="29.5" x2="23" y2="35" stroke="#8E8E93" stroke-width="1.9"/>
-          <line x1="17" y1="35" x2="29" y2="35" stroke="#8E8E93" stroke-width="1.9" stroke-linecap="round"/>
-        </svg>
-        <div style="font-size:11px;font-weight:600;margin-top:6px;">Şampiyon</div>
-        <div style="font-size:10px;color:var(--sub);">Kilitli</div>
-      </div>
-    </div>
   </div>
 </div>
 
 <!-- ══ PROFILE ══ -->
+
 <div class="screen" id="screen-profile">
   <div class="statusbar" style="color:rgba(255,255,255,0.4);"><span>9:41</span><span>◉◉◉</span></div>
   <div class="profile-hero">
     <div class="profile-avatar-lg"><svg width="38" height="38"><use href="#s-leaf"/></svg></div>
-    <div class="profile-name">Sena Yıldız</div>
+    <div class="profile-name" id="profile-display-name">...</div>
+    <div class="profile-email" id="profile-email">...</div>
     <div class="profile-level">SEVİYE 12 · KÂŞIF</div>
     <div class="profile-stats">
       <div class="stat-box"><div class="stat-val"><svg width="15" height="15"><use href="#s-coin"/></svg>340</div><div class="stat-label">Coin</div></div>
@@ -906,315 +592,104 @@
     </div>
   </div>
   <div class="scroll-area" style="padding:0 18px;">
-
-    <!-- ŞU AN DİNLİYOR -->
-    <div id="profile-now-playing" style="display:none;margin-top:4px;margin-bottom:2px;">
-      <div class="section-title" style="margin-bottom:10px;">Şu An Dinliyor</div>
-      <div class="now-playing-card" onclick="goTo('music')">
-        <div class="np-art" id="np-art">
-          <svg width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" rx="10" fill="#3A3A3C"/><path d="M20 16v16l14-8z" fill="rgba(255,107,0,0.9)"/></svg>
-        </div>
-        <div class="np-info">
-          <div class="np-label">♫ Şu an çalıyor</div>
-          <div class="np-title" id="np-title">—</div>
-          <div class="np-artist" id="np-artist">—</div>
-        </div>
-        <div class="eq-bars" id="np-eq">
-          <div class="eq-bar" style="height:6px"></div>
-          <div class="eq-bar" style="height:12px"></div>
-          <div class="eq-bar" style="height:8px"></div>
-        </div>
-      </div>
-    </div>
-
     <div class="section-title">Mağaza</div>
     <div class="shop-grid">
-      <div class="shop-item" onclick="buyItem('Ejderha Avatar',100)">
-        <svg width="52" height="52"><use href="#sh-dragon"/></svg>
-        <div class="shop-name">Ejderha Avatar</div>
-        <div class="shop-price"><svg width="12" height="12"><use href="#s-coin"/></svg>100</div>
-      </div>
-      <div class="shop-item" onclick="buyItem('Çiçek Tema',80)">
-        <svg width="52" height="52"><use href="#sh-floral"/></svg>
-        <div class="shop-name">Çiçek Tema</div>
-        <div class="shop-price"><svg width="12" height="12"><use href="#s-coin"/></svg>80</div>
-      </div>
-      <div class="shop-item" onclick="buyItem('Gece Çerçevesi',150)">
-        <svg width="52" height="52"><use href="#sh-night"/></svg>
-        <div class="shop-name">Gece Çerçevesi</div>
-        <div class="shop-price"><svg width="12" height="12"><use href="#s-coin"/></svg>150</div>
-      </div>
-      <div class="shop-item" onclick="buyItem('Altın Rozet',200)">
-        <svg width="52" height="52"><use href="#sh-star"/></svg>
-        <div class="shop-name">Altın Rozet</div>
-        <div class="shop-price"><svg width="12" height="12"><use href="#s-coin"/></svg>200</div>
-      </div>
+      <div class="shop-item" onclick="buyItem('Ejderha Avatar',100)"><svg width="52" height="52"><use href="#sh-dragon"/></svg><div class="shop-name">Ejderha Avatar</div><div class="shop-price"><svg width="12" height="12"><use href="#s-coin"/></svg>100</div></div>
+      <div class="shop-item" onclick="buyItem('Çiçek Tema',80)"><svg width="52" height="52"><use href="#sh-floral"/></svg><div class="shop-name">Çiçek Tema</div><div class="shop-price"><svg width="12" height="12"><use href="#s-coin"/></svg>80</div></div>
+      <div class="shop-item" onclick="buyItem('Gece Çerçevesi',150)"><svg width="52" height="52"><use href="#sh-night"/></svg><div class="shop-name">Gece Çerçevesi</div><div class="shop-price"><svg width="12" height="12"><use href="#s-coin"/></svg>150</div></div>
+      <div class="shop-item" onclick="buyItem('Altın Rozet',200)"><svg width="52" height="52"><use href="#sh-star"/></svg><div class="shop-name">Altın Rozet</div><div class="shop-price"><svg width="12" height="12"><use href="#s-coin"/></svg>200</div></div>
     </div>
-
     <div class="section-title">Ayarlar</div>
     <div class="card" style="padding:6px 16px;">
-      <div class="setting-row" onclick="showToast('Profil düzenleniyor...')">
-        <div class="setting-icon" style="background:#EEF4FF;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg></div>
-        <div class="setting-label">Profil Düzenle</div><div class="setting-arrow">›</div>
-      </div>
-      <div class="setting-row" onclick="showToast('Bildirimler açılıyor...')">
-        <div class="setting-icon" style="background:#FFF3E0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9500" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg></div>
-        <div class="setting-label">Bildirimler</div><div class="setting-arrow">›</div>
-      </div>
-      <div class="setting-row" onclick="showToast('Hedefler ayarlanıyor...')">
-        <div class="setting-icon" style="background:#EDFAF1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/></svg></div>
-        <div class="setting-label">Günlük Hedef</div><div class="setting-arrow">›</div>
-      </div>
-      <div class="setting-row" onclick="showToast('Gizlilik açılıyor...')">
-        <div class="setting-icon" style="background:#FFF0F0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF2D55" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
-        <div class="setting-label">Gizlilik</div><div class="setting-arrow">›</div>
-      </div>
-      <div class="setting-row" onclick="showToast('Destek ekibiyle iletişime geçildi.')">
-        <div class="setting-icon" style="background:#F0F0F0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
-        <div class="setting-label">Destek</div><div class="setting-arrow">›</div>
+      <div class="setting-row" onclick="showToast('Profil düzenleme yakında!')"><div class="setting-icon" style="background:#EEF4FF;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg></div><div class="setting-label">Profil Düzenle</div><div class="setting-arrow">›</div></div>
+      <div class="setting-row" onclick="showToast('Bildirimler yakında!')"><div class="setting-icon" style="background:#FFF3E0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9500" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg></div><div class="setting-label">Bildirimler</div><div class="setting-arrow">›</div></div>
+      <div class="setting-row" onclick="showToast('Hedef ayarları yakında!')"><div class="setting-icon" style="background:#EDFAF1;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg></div><div class="setting-label">Günlük Hedef</div><div class="setting-arrow">›</div></div>
+      <div class="logout-btn" onclick="logoutUser()">
+        <div class="setting-icon" style="background:#FFF0F0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></div>
+        <div style="flex:1;">Çıkış Yap</div>
       </div>
     </div>
-    <div style="text-align:center;color:var(--sub);font-size:11px;padding:18px 0 8px;">Aura v1.0 · Tüm haklar saklıdır</div>
+    <div style="text-align:center;color:var(--sub);font-size:11px;padding:18px 0 8px;">Aura v2.0 · Firebase Auth ✓</div>
   </div>
 </div>
 
 <!-- ══ MÜZİK ══ -->
+
 <div class="screen" id="screen-music">
   <div class="statusbar"><span>9:41</span><span style="color:var(--sub)">◉◉◉</span></div>
-
-  <!-- BÜYÜK ÇALAR -->
-  <div class="music-hero" id="music-hero">
-    <div class="album-art" id="album-art">
-      <svg width="180" height="180" viewBox="0 0 180 180">
-        <rect width="180" height="180" fill="#2C2C2E"/>
-        <circle cx="90" cy="90" r="60" fill="#3A3A3C"/>
-        <circle cx="90" cy="90" r="20" fill="#1C1C1E"/>
-        <path d="M78 72 L78 108 L114 90 Z" fill="rgba(255,107,0,0.8)"/>
-      </svg>
-    </div>
+  <div class="music-hero">
+    <div class="album-art" id="album-art"><svg width="180" height="180" viewBox="0 0 180 180"><rect width="180" height="180" fill="#2C2C2E"/><circle cx="90" cy="90" r="60" fill="#3A3A3C"/><path d="M78 72 L78 108 L114 90 Z" fill="rgba(255,107,0,0.8)"/></svg></div>
     <div class="music-title" id="now-title">Müzik Seç</div>
     <div class="music-artist" id="now-artist">Kütüphanenden bir şarkı ekle</div>
-
-    <div class="progress-wrap">
-      <div class="progress-bar" id="prog-bar" onclick="seekMusic(event)">
-        <div class="progress-fill" id="prog-fill" style="width:0%"></div>
-        <div class="progress-thumb" id="prog-thumb" style="left:0%"></div>
-      </div>
-      <div class="progress-times">
-        <span id="time-cur">0:00</span>
-        <span id="time-tot">0:00</span>
-      </div>
-    </div>
-
+    <div class="progress-wrap"><div class="progress-bar" id="prog-bar" onclick="seekMusic(event)"><div class="progress-fill" id="prog-fill" style="width:0%"></div><div class="progress-thumb" id="prog-thumb" style="left:0%"></div></div><div class="progress-times"><span id="time-cur">0:00</span><span id="time-tot">0:00</span></div></div>
     <div class="music-controls">
-      <button class="ctrl-btn" onclick="prevSong()">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M19 20L9 12l10-8v16zM5 4h2v16H5z"/></svg>
-      </button>
-      <div class="play-btn" id="play-btn" onclick="togglePlay()">
-        <svg id="play-icon" width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
-      </div>
-      <button class="ctrl-btn" onclick="nextSong()">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M5 4l10 8-10 8V4zm14 0h-2v16h2z"/></svg>
-      </button>
+      <button class="ctrl-btn" onclick="prevSong()"><svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M19 20L9 12l10-8v16zM5 4h2v16H5z"/></svg></button>
+      <div class="play-btn" id="play-btn" onclick="togglePlay()"><svg id="play-icon" width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div>
+      <button class="ctrl-btn" onclick="nextSong()"><svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M5 4l10 8-10 8V4zm14 0h-2v16h2z"/></svg></button>
     </div>
   </div>
-
   <div class="scroll-area" style="padding:0 18px;">
-    <!-- YÜKLEME -->
     <div class="upload-zone" onclick="document.getElementById('music-upload').click()">
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#AF52DE" stroke-width="1.8" style="margin-bottom:8px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
       <div style="font-size:14px;font-weight:500;color:#AF52DE;">Müzik Ekle</div>
       <div style="font-size:12px;color:var(--sub);margin-top:4px;">MP3, AAC, WAV desteklenir</div>
       <input type="file" id="music-upload" accept="audio/*" multiple style="display:none" onchange="uploadMusic(event)">
     </div>
-
-    <!-- KÜTÜPHANE -->
     <div class="section-title">Kütüphane</div>
-    <div id="song-list">
-      <div style="text-align:center;padding:32px 0;color:var(--sub);font-size:13px;">
-        Henüz şarkı yok — yukarıdan ekle 🎵
-      </div>
-    </div>
+    <div id="song-list"><div style="text-align:center;padding:32px 0;color:var(--sub);font-size:13px;">Henüz şarkı yok — yukarıdan ekle 🎵</div></div>
   </div>
 </div>
 
-<!-- MİNİ PLAYER (diğer ekranlarda görünür) -->
 <div class="mini-player" id="mini-player">
-  <div class="mini-art" id="mini-art">
-    <svg width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#3A3A3C"/><path d="M14 11v14l11-7z" fill="rgba(255,107,0,0.8)"/></svg>
-  </div>
-  <div class="mini-info">
-    <div class="mini-title" id="mini-title">—</div>
-    <div class="mini-artist" id="mini-artist">—</div>
-  </div>
+  <div class="mini-art" id="mini-art"><svg width="36" height="36" viewBox="0 0 36 36"><rect width="36" height="36" rx="8" fill="#3A3A3C"/><path d="M14 11v14l11-7z" fill="rgba(255,107,0,0.8)"/></svg></div>
+  <div class="mini-info"><div class="mini-title" id="mini-title">—</div><div class="mini-artist" id="mini-artist">—</div></div>
   <div class="mini-controls">
-    <button class="ctrl-btn" onclick="prevSong()" style="padding:2px">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M19 20L9 12l10-8v16zM5 4h2v16H5z"/></svg>
-    </button>
-    <div class="mini-play" onclick="togglePlay()" id="mini-play-btn">
-      <svg id="mini-play-icon" width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
-    </div>
-    <button class="ctrl-btn" onclick="nextSong()" style="padding:2px">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M5 4l10 8-10 8V4zm14 0h-2v16h2z"/></svg>
-    </button>
+    <button class="ctrl-btn" onclick="prevSong()" style="padding:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M19 20L9 12l10-8v16zM5 4h2v16H5z"/></svg></button>
+    <div class="mini-play" onclick="togglePlay()" id="mini-play-btn"><svg id="mini-play-icon" width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></div>
+    <button class="ctrl-btn" onclick="nextSong()" style="padding:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M5 4l10 8-10 8V4zm14 0h-2v16h2z"/></svg></button>
   </div>
 </div>
 
-<!-- ══ BOTTOM NAV ══ -->
 <nav class="bottom-nav">
-  <div class="nav-item active" id="nav-home" onclick="goTo('home')">
-    <svg class="ni" viewBox="0 0 28 28"><use href="#n-home"/></svg>
-    <div class="nav-dot"></div>
-  </div>
-  <div class="nav-item" id="nav-messages" onclick="goTo('messages')">
-    <svg class="ni" viewBox="0 0 28 28"><use href="#n-chat"/></svg>
-    <div class="nav-dot"></div>
-  </div>
-  <div class="nav-item" id="nav-games" onclick="goTo('games')">
-    <svg class="ni" viewBox="0 0 28 28"><use href="#n-game"/></svg>
-    <div class="nav-dot"></div>
-  </div>
-  <div class="nav-item" id="nav-steps" onclick="goTo('steps')">
-    <svg class="ni" viewBox="0 0 28 28"><use href="#n-steps"/></svg>
-    <div class="nav-dot"></div>
-  </div>
-  <div class="nav-item" id="nav-music" onclick="goTo('music')">
-    <svg class="ni" viewBox="0 0 28 28"><use href="#n-music"/></svg>
-    <div class="nav-dot"></div>
-  </div>
-  <div class="nav-item" id="nav-profile" onclick="goTo('profile')">
-    <svg class="ni" viewBox="0 0 28 28"><use href="#n-person"/></svg>
-    <div class="nav-dot"></div>
-  </div>
+  <div class="nav-item active" id="nav-home" onclick="goTo('home')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-home"/></svg><div class="nav-dot"></div></div>
+  <div class="nav-item" id="nav-messages" onclick="goTo('messages')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-chat"/></svg><div class="nav-dot"></div></div>
+  <div class="nav-item" id="nav-games" onclick="goTo('games')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-game"/></svg><div class="nav-dot"></div></div>
+  <div class="nav-item" id="nav-steps" onclick="goTo('steps')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-steps"/></svg><div class="nav-dot"></div></div>
+  <div class="nav-item" id="nav-music" onclick="goTo('music')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-music"/></svg><div class="nav-dot"></div></div>
+  <div class="nav-item" id="nav-profile" onclick="goTo('profile')"><svg class="ni" viewBox="0 0 28 28"><use href="#n-person"/></svg><div class="nav-dot"></div></div>
 </nav>
 
 <script>
-let coins=340;
-const chatData={};
+// ══════════════════════════════════════════════════════════
+// AURA APP — v2.0 — Firebase Email/Password Auth
+// ══════════════════════════════════════════════════════════
 
-/* ── Haptic ── */
-const h={
-  tap:    ()=>navigator.vibrate&&navigator.vibrate(8),
-  light:  ()=>navigator.vibrate&&navigator.vibrate(12),
-  success:()=>navigator.vibrate&&navigator.vibrate([10,40,10]),
-  error:  ()=>navigator.vibrate&&navigator.vibrate([8,30,8,30,8]),
-  coin:   ()=>navigator.vibrate&&navigator.vibrate([6,20,6])
+let coins = 340;
+let activeRoom = 'genel';
+let roomListener = null;
+let chatListener = null;
+
+// Haptic
+const h = {
+  tap:     () => navigator.vibrate && navigator.vibrate(8),
+  light:   () => navigator.vibrate && navigator.vibrate(12),
+  success: () => navigator.vibrate && navigator.vibrate([10,40,10]),
+  error:   () => navigator.vibrate && navigator.vibrate([8,30,8,30,8]),
+  coin:    () => navigator.vibrate && navigator.vibrate([6,20,6])
 };
 
-/* ── Audio Engine ── */
-let _ctx=null;
-function ctx(){
-  if(!_ctx) _ctx=new(window.AudioContext||window.webkitAudioContext)();
-  if(_ctx.state==='suspended') _ctx.resume();
-  return _ctx;
-}
+// Tarih
+const days=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+const months=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const now=new Date();
+document.getElementById('home-date').textContent=`${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+function timeStr(){const t=new Date();return t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');}
+setInterval(()=>{const s=timeStr();document.getElementById('home-time').textContent=s;document.getElementById('chat-time').textContent=s;},10000);
 
-// Temel ses üretici — birden fazla oscillator katmanıyla zengin ses
-function tone(freq, type, vol, atk, dec, offset, detune){
-  const c=ctx(), o=c.createOscillator(), g=c.createGain();
-  o.connect(g); g.connect(c.destination);
-  o.type=type; 
-  o.frequency.setValueAtTime(freq, c.currentTime+offset);
-  if(detune) o.detune.setValueAtTime(detune, c.currentTime+offset);
-  g.gain.setValueAtTime(0, c.currentTime+offset);
-  g.gain.linearRampToValueAtTime(vol, c.currentTime+offset+atk);
-  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime+offset+atk+dec);
-  o.start(c.currentTime+offset);
-  o.stop(c.currentTime+offset+atk+dec+0.05);
-}
+// Toast
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
 
-// Reverb/filtreli ton — daha organik ses için
-function softTone(freq, vol, atk, dec, offset){
-  const c=ctx(), o=c.createOscillator(), g=c.createGain(), f=c.createBiquadFilter();
-  o.connect(f); f.connect(g); g.connect(c.destination);
-  o.type='sine'; f.type='lowpass'; f.frequency.value=freq*2.5;
-  o.frequency.setValueAtTime(freq, c.currentTime+offset);
-  g.gain.setValueAtTime(0, c.currentTime+offset);
-  g.gain.linearRampToValueAtTime(vol, c.currentTime+offset+atk);
-  g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime+offset+atk+dec);
-  o.start(c.currentTime+offset);
-  o.stop(c.currentTime+offset+atk+dec+0.05);
-}
-
-const sfx = {
-
-  // Mesaj GÖNDERİLDİ — yumuşak "whoosh" gibi uçan bir ses, hafif yükselen
-  send: ()=>{
-    const c=ctx(), o=c.createOscillator(), g=c.createGain(), f=c.createBiquadFilter();
-    o.connect(f); f.connect(g); g.connect(c.destination);
-    o.type='sine'; f.type='bandpass'; f.frequency.value=900; f.Q.value=0.8;
-    o.frequency.setValueAtTime(320, c.currentTime);
-    o.frequency.exponentialRampToValueAtTime(680, c.currentTime+0.18);
-    g.gain.setValueAtTime(0, c.currentTime);
-    g.gain.linearRampToValueAtTime(0.13, c.currentTime+0.04);
-    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime+0.22);
-    o.start(c.currentTime); o.stop(c.currentTime+0.3);
-    // ince bir üst katman
-    softTone(1100, 0.05, 0.06, 0.12, 0.06);
-  },
-
-  // Mesaj GELDİ — iki yumuşak "ding" — biri biraz sonra, kristal gibi
-  receive: ()=>{
-    softTone(880,  0.11, 0.008, 0.28, 0);
-    softTone(1320, 0.07, 0.008, 0.22, 0.14);
-  },
-
-  // DOĞRU CEVAP — dalga gibi yükselen, kristal + sıcak katmanlar
-  correct: ()=>{
-    softTone(523,  0.10, 0.01, 0.18, 0);
-    softTone(659,  0.09, 0.01, 0.18, 0.1);
-    softTone(784,  0.10, 0.01, 0.20, 0.2);
-    softTone(1046, 0.08, 0.01, 0.30, 0.32);
-    // parlak üst harmoni
-    tone(2093, 'sine', 0.04, 0.01, 0.18, 0.32, 0);
-  },
-
-  // YANLIŞ CEVAP — alçalan yumuşak "düüm" — agresif değil, hüzünlü
-  wrong: ()=>{
-    const c=ctx(), o=c.createOscillator(), g=c.createGain();
-    o.connect(g); g.connect(c.destination);
-    o.type='sine';
-    o.frequency.setValueAtTime(340, c.currentTime);
-    o.frequency.exponentialRampToValueAtTime(200, c.currentTime+0.35);
-    g.gain.setValueAtTime(0.12, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime+0.4);
-    o.start(c.currentTime); o.stop(c.currentTime+0.45);
-    softTone(240, 0.06, 0.02, 0.3, 0.08);
-  },
-
-  // GÖREV TAMAMLA — küçük, sıcak "tamamlandı" melodisi
-  task: ()=>{
-    softTone(440,  0.09, 0.01, 0.14, 0);
-    softTone(554,  0.09, 0.01, 0.14, 0.1);
-    softTone(659,  0.10, 0.01, 0.16, 0.2);
-    softTone(880,  0.09, 0.01, 0.26, 0.33);
-    softTone(1108, 0.06, 0.01, 0.22, 0.44);
-  },
-
-  // COİN KAZANMA — hafif metalik tınlama, sıcak
-  coin: ()=>{
-    tone(1200, 'triangle', 0.10, 0.005, 0.14, 0, 0);
-    tone(1500, 'triangle', 0.07, 0.005, 0.12, 0.08, 7);
-    softTone(600, 0.06, 0.01, 0.18, 0.04);
-  },
-
-  // SATIN AL — tatmin edici "klik+tınlama" — ne çok kısa ne çok uzun
-  buy: ()=>{
-    tone(800,  'triangle', 0.09, 0.005, 0.10, 0, 0);
-    tone(1000, 'triangle', 0.08, 0.005, 0.12, 0.09, 5);
-    tone(1300, 'triangle', 0.06, 0.005, 0.14, 0.18, -5);
-    softTone(650, 0.07, 0.01, 0.2, 0.05);
-  },
-
-  // YETERSİZ COİN — kısa, yumuşak "um-um"
-  error: ()=>{
-    softTone(280, 0.10, 0.01, 0.14, 0);
-    softTone(250, 0.08, 0.01, 0.16, 0.18);
-  },
-};
-
-
-/* ── Navigation ── */
+// Navigation
 let currentScreen='home';
 function goTo(s){
   if(s===currentScreen)return;
@@ -1222,286 +697,274 @@ function goTo(s){
   document.querySelectorAll('.screen').forEach(e=>e.classList.remove('active'));
   document.getElementById('screen-'+s).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
-  const n=document.getElementById('nav-'+s); if(n)n.classList.add('active');
-  document.getElementById('fab').classList.toggle('visible', s==='messages');
+  const n=document.getElementById('nav-'+s);if(n)n.classList.add('active');
+  document.getElementById('fab').classList.toggle('visible',s==='messages');
+  if(s==='messages') loadRoomMessages();
 }
 
-function showToast(m){
-  const t=document.getElementById('toast');
-  t.textContent=m; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2400);
+// Badge/Coin
+function popBadge(){const b=document.querySelector('.coins-badge');b.classList.remove('badge-pop');void b.offsetWidth;b.classList.add('badge-pop');setTimeout(()=>b.classList.remove('badge-pop'),500);}
+function flyCoins(fromEl,count){
+  count=count||1;const badge=document.querySelector('.coins-badge');const br=badge.getBoundingClientRect();const bx=br.left+br.width/2,by=br.top+br.height/2;
+  for(let i=0;i<count;i++){setTimeout(()=>{const sr=fromEl.getBoundingClientRect();const sx=sr.left+sr.width/2-11,sy=sr.top+sr.height/2-11;const coin=document.createElement('div');coin.className='coin-fly';coin.textContent='A';coin.style.cssText=`left:${sx}px;top:${sy}px`;const sc=(Math.random()-.5)*50;coin.style.setProperty('--fly-x',sc+'px');coin.style.setProperty('--fly-y',(sc*.5)+'px');coin.style.setProperty('--end-x',(bx-sx-11)+'px');coin.style.setProperty('--end-y',(by-sy-11)+'px');coin.style.animation='coinFly .7s cubic-bezier(.4,0,.2,1) forwards';document.body.appendChild(coin);coin.addEventListener('animationend',()=>{coin.remove();popBadge();});},i*90);}
 }
+function addCoins(n,sourceEl){coins+=n;document.getElementById('coin-display').textContent=coins;if(sourceEl)flyCoins(sourceEl,Math.min(Math.ceil(n/10),5));else popBadge();}
 
-/* ── Badge bounce ── */
-function popBadge(){
-  const b=document.querySelector('.coins-badge');
-  b.classList.remove('badge-pop');
-  void b.offsetWidth;
-  b.classList.add('badge-pop');
-  setTimeout(()=>b.classList.remove('badge-pop'),500);
-}
-
-/* ── Coin fly ── */
-function flyCoins(fromEl, count){
-  count=count||1;
-  const badge=document.querySelector('.coins-badge');
-  const br=badge.getBoundingClientRect();
-  const bx=br.left+br.width/2, by=br.top+br.height/2;
-  for(let i=0;i<count;i++){
-    setTimeout(()=>{
-      const sr=fromEl.getBoundingClientRect();
-      const sx=sr.left+sr.width/2-11, sy=sr.top+sr.height/2-11;
-      const coin=document.createElement('div');
-      coin.className='coin-fly'; coin.textContent='A';
-      coin.style.cssText=`left:${sx}px;top:${sy}px`;
-      const sc=(Math.random()-.5)*50;
-      coin.style.setProperty('--fly-x',sc+'px');
-      coin.style.setProperty('--fly-y',(sc*.5)+'px');
-      coin.style.setProperty('--end-x',(bx-sx-11)+'px');
-      coin.style.setProperty('--end-y',(by-sy-11)+'px');
-      coin.style.animation='coinFly .7s cubic-bezier(.4,0,.2,1) forwards';
-      document.body.appendChild(coin);
-      coin.addEventListener('animationend',()=>{ coin.remove(); popBadge(); });
-    },i*90);
-  }
-}
-
-function addCoins(n,sourceEl){
-  coins+=n;
-  document.getElementById('coin-display').textContent=coins;
-  if(sourceEl) flyCoins(sourceEl,Math.min(Math.ceil(n/10),5));
-  else popBadge();
-}
-
-/* ── Tasks ── */
+// Tasks
 function completeTask(id,reward){
-  const el=document.getElementById(id);
-  if(el.classList.contains('done'))return;
-  h.success(); sfx.task();
-  el.classList.add('done');
-  const c=document.getElementById('check'+id.replace('task',''));
-  c.style.background='var(--green)'; c.style.borderColor='var(--green)';
+  const el=document.getElementById(id);if(el.classList.contains('done'))return;
+  h.success();el.classList.add('done');
+  const num=id.replace('task','');const c=document.getElementById('check'+num);
+  c.style.background='var(--green)';c.style.borderColor='var(--green)';
   c.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
   el.querySelectorAll('.task-text').forEach(t=>{t.style.textDecoration='line-through';t.style.color='var(--sub)'});
-  addCoins(reward, el.querySelector('.task-reward-badge'));
-  showToast('+'+reward+' coin kazandın!');
+  addCoins(reward,el.querySelector('.task-reward-badge'));showToast('+'+reward+' coin kazandın!');
 }
 
-/* ── Questions ── */
+// Questions
 let qA=false;
-function answerQ(el,c){
-  if(qA)return; qA=true;
-  if(c){h.success();sfx.correct();}else{h.error();sfx.wrong();}
-  document.querySelectorAll('#q-opts .q-option').forEach(o=>o.style.pointerEvents='none');
-  el.classList.add(c?'correct':'wrong');
-  if(c){addCoins(25,el);showToast('Doğru! +25 coin kazandın!');}
-  else{document.querySelectorAll('#q-opts .q-option')[1].classList.add('correct');showToast('Yanlış. Doğru cevap: Pasifik');}
-}
+function answerQ(el,c){if(qA)return;qA=true;if(c)h.success();else h.error();document.querySelectorAll('#q-opts .q-option').forEach(o=>o.style.pointerEvents='none');el.classList.add(c?'correct':'wrong');if(c){addCoins(25,el);showToast('Doğru! +25 coin kazandın!');}else{document.querySelectorAll('#q-opts .q-option')[1].classList.add('correct');showToast('Yanlış. Doğru: Pasifik');}}
 let gA=false;
-function answerGQ(el,c){
-  if(gA)return; gA=true;
-  if(c){h.success();sfx.correct();}else{h.error();sfx.wrong();}
-  document.querySelectorAll('#gq-opts .q-option').forEach(o=>o.style.pointerEvents='none');
-  el.classList.add(c?'correct':'wrong');
-  if(c){addCoins(30,el);showToast('Muhteşem! +30 coin kazandın!');}
-  else{document.querySelectorAll('#gq-opts .q-option')[1].classList.add('correct');showToast('Yanlış. Doğru cevap: 300,000 km');}
+function answerGQ(el,c){if(gA)return;gA=true;if(c)h.success();else h.error();document.querySelectorAll('#gq-opts .q-option').forEach(o=>o.style.pointerEvents='none');el.classList.add(c?'correct':'wrong');if(c){addCoins(30,el);showToast('Muhteşem! +30 coin kazandın!');}else{document.querySelectorAll('#gq-opts .q-option')[1].classList.add('correct');showToast('Yanlış. Doğru: 300,000 km');}}
+
+// Shop
+function buyItem(name,price){if(coins<price){h.error();showToast('Yeterli coin yok!');return;}h.coin();coins-=price;document.getElementById('coin-display').textContent=coins;popBadge();showToast(name+' satın alındı!');}
+
+// ══════════════════════════════════════════════════════════
+// 🔥 AUTH — Email / Password
+// ══════════════════════════════════════════════════════════
+
+function switchTab(t){
+  document.getElementById('tab-login').classList.toggle('active',t==='login');
+  document.getElementById('tab-register').classList.toggle('active',t==='register');
+  document.getElementById('form-login').style.display=t==='login'?'block':'none';
+  document.getElementById('form-register').style.display=t==='register'?'block':'none';
 }
 
-/* ── Shop ── */
-function buyItem(name,price){
-  if(coins<price){h.error();sfx.error();showToast('Yeterli coin yok!');return;}
-  h.coin(); sfx.buy(); coins-=price;
-  document.getElementById('coin-display').textContent=coins;
-  popBadge();
-  showToast(name+' satın alındı!');
+function setLoading(form,on){
+  document.getElementById(form+'-text').style.display=on?'none':'inline';
+  document.getElementById(form+'-loading').style.display=on?'block':'none';
 }
 
-/* ── Chat ── */
-const defaultMsgs={
-  'Elif': [{from:'them',text:'Selam! Nasılsın?',time:'14:20'},{from:'them',text:'Bugün buluşuyor muyuz?',time:'14:23'}],
-  'Ahmet':[{from:'them',text:'Kardeşim o oyun çok zordu',time:'11:50'},{from:'me',text:'Eminim bitirirsin!',time:'12:00'},{from:'them',text:'Oyunu bitirdim nihayet lol',time:'12:07'}],
-  'Zeynep':[{from:'me',text:'O restorandan bahsetmiştin neydi?',time:'Dün'},{from:'them',text:'O restoranı dene mutlaka harika!',time:'Dün'}],
-  'Mert':[{from:'them',text:"Şu playlist'i dinle, çok iyi",time:'Pzt'}],
-  'Selin':[{from:'me',text:'Görüşürüz!',time:'Paz'},{from:'them',text:'Tamam görüşürüz',time:'Paz'}],
-};
-let activeName='';
-function openChat(name,avId){
-  h.tap(); activeName=name;
-  document.getElementById('chat-name').textContent=name;
-  document.getElementById('chat-av').innerHTML=`<svg width="40" height="40"><use href="#${avId}"/></svg>`;
-  if(!chatData[name])chatData[name]=[...(defaultMsgs[name]||[])];
-  renderMsgs(name);
-  document.getElementById('chat-screen').classList.add('open');
-  setTimeout(()=>{const m=document.getElementById('chat-msgs');m.scrollTop=m.scrollHeight},80);
+function authError(form,msg){
+  const tr={'auth/email-already-in-use':'Bu e-posta zaten kayıtlı','auth/invalid-email':'Geçersiz e-posta','auth/weak-password':'Şifre en az 6 karakter olmalı','auth/user-not-found':'Kullanıcı bulunamadı','auth/wrong-password':'Hatalı şifre','auth/invalid-credential':'E-posta veya şifre hatalı'};
+  document.getElementById(form+'-err').textContent=tr[msg]||msg;
 }
-function closeChat(){h.tap();document.getElementById('chat-screen').classList.remove('open');}
-function renderMsgs(name){
-  const c=document.getElementById('chat-msgs'); c.innerHTML='';
-  (chatData[name]||[]).forEach(m=>{
-    const isMe = m.from==='me';
-    // iPhone tarzı kuyruk: baloncuğun üst köşesinden çıkan küçük sivri çıkıntı
-    const tail = isMe
-      ? `<div class="bubble-tail"><svg width="14" height="18" viewBox="0 0 14 18" fill="none"><path d="M0 0 C0 0 14 0 14 0 C14 10 8 16 0 18 C4 12 5 6 0 0Z" fill="#FF7A1A"/></svg></div>`
-      : `<div class="bubble-tail"><svg width="14" height="18" viewBox="0 0 14 18" fill="none"><path d="M14 0 C14 0 0 0 0 0 C0 10 6 16 14 18 C10 12 9 6 14 0Z" fill="#F2F2F7"/></svg></div>`;
-    const d=document.createElement('div');
-    d.innerHTML=`<div class="bubble ${m.from}"><div class="bubble-inner">${tail}${m.text}</div><div class="bubble-time">${m.time}</div></div>`;
-    c.appendChild(d.firstChild);
+
+async function registerUser(){
+  const name=document.getElementById('reg-name').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const pass=document.getElementById('reg-pass').value;
+  if(!name){document.getElementById('reg-err').textContent='İsim giriniz';return;}
+  if(!email||!pass){document.getElementById('reg-err').textContent='Tüm alanları doldurunuz';return;}
+  setLoading('reg',true);
+  try{
+    const {createUserWithEmailAndPassword,updateProfile,auth}=window._fb;
+    const cred=await createUserWithEmailAndPassword(auth,email,pass);
+    await updateProfile(cred.user,{displayName:name});
+    document.getElementById('reg-err').textContent='';
+  }catch(e){setLoading('reg',false);authError('reg',e.code);}
+}
+
+async function loginUser(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  if(!email||!pass){document.getElementById('login-err').textContent='Tüm alanları doldurunuz';return;}
+  setLoading('login',true);
+  try{
+    const {signInWithEmailAndPassword,auth}=window._fb;
+    await signInWithEmailAndPassword(auth,email,pass);
+    document.getElementById('login-err').textContent='';
+  }catch(e){setLoading('login',false);authError('login',e.code);}
+}
+
+async function logoutUser(){
+  if(!confirm('Çıkış yapmak istediğinize emin misiniz?'))return;
+  if(roomListener)roomListener();
+  await window._fb.signOut(window._fb.auth);
+}
+
+// Auth durumu değişince
+document.addEventListener('auth-changed',(e)=>{
+  const user=e.detail.user;
+  if(user){
+    // Giriş yapıldı
+    document.getElementById('auth-screen').classList.remove('show');
+    const name=user.displayName||user.email.split('@')[0];
+    document.getElementById('profile-display-name').textContent=name;
+    document.getElementById('profile-email').textContent=user.email;
+    document.getElementById('leaderboard-me').textContent=name;
+    // Firebase bağlantı göstergesi
+    updateFbStatus(true);
+    showToast('Hoş geldin, '+name+'! 🎉');
+  }else{
+    // Çıkış yapıldı
+    document.getElementById('auth-screen').classList.add('show');
+    setLoading('login',false);setLoading('reg',false);
+    updateFbStatus(false);
+  }
+});
+
+function updateFbStatus(on){
+  ['msg-fb-dot','chat-fb-dot'].forEach(id=>{const d=document.getElementById(id);if(d){d.className='fb-dot '+(on?'on':'off');}});
+  ['msg-fb-label','chat-fb-label'].forEach(id=>{const l=document.getElementById(id);if(l)l.textContent=on?'Canlı':'Çevrimdışı';});
+}
+
+// ══════════════════════════════════════════════════════════
+// 🔥 REALTIME MESAJLAŞMA
+// ══════════════════════════════════════════════════════════
+
+function switchRoom(room,el){
+  activeRoom=room;
+  document.querySelectorAll('.room-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  loadRoomMessages();
+}
+
+function loadRoomMessages(){
+  if(!window._currentUser)return;
+  if(roomListener)roomListener();
+  const {db,ref,query,limitToLast,onChildAdded}=window._fb;
+  const msgList=document.getElementById('msg-list');
+  msgList.innerHTML='<div style="text-align:center;padding:20px;color:var(--sub);font-size:13px;">Yükleniyor...</div>';
+
+  const msgsRef=query(ref(db,'rooms/'+activeRoom),limitToLast(80));
+  const seen=new Set();
+  let first=true;
+
+  roomListener=onChildAdded(msgsRef,(snap)=>{
+    if(seen.has(snap.key))return;
+    seen.add(snap.key);
+    const m=snap.val();
+    const isFirst=first&&msgList.querySelector('[data-empty]');
+    if(first){msgList.innerHTML='';first=false;}
+    appendRoomMsg(m);
+    msgList.scrollTop=msgList.scrollHeight;
+  });
+
+  setTimeout(()=>{
+    if(first){msgList.innerHTML='<div data-empty style="text-align:center;padding:40px 0;color:var(--sub);font-size:13px;">Bu odada henüz mesaj yok.<br>İlk mesajı sen gönder! 💬</div>';}
+    first=false;
+  },1500);
+}
+
+function appendRoomMsg(m){
+  const user=window._currentUser;
+  const isMe=m.uid===user.uid;
+  const msgList=document.getElementById('msg-list');
+  const d=document.createElement('div');
+  d.style.cssText='display:flex;align-items:flex-start;gap:10px;padding:8px 0;'+(isMe?'flex-direction:row-reverse;':'');
+  const initials=(m.sender||'?').slice(0,1).toUpperCase();
+  const colors=['#FF6B00','#007AFF','#34C759','#AF52DE','#FF2D55','#FFD60A'];
+  const color=colors[(m.sender||'').charCodeAt(0)%colors.length];
+  d.innerHTML=`
+    <div style="width:32px;height:32px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;">${initials}</div>
+    <div style="max-width:70%;">
+      ${!isMe?`<div style="font-size:10px;color:var(--sub);margin-bottom:3px;font-weight:600;">${m.sender||'?'}</div>`:''}
+      <div style="padding:10px 14px;border-radius:${isMe?'18px 4px 18px 18px':'4px 18px 18px 18px'};background:${isMe?'linear-gradient(135deg,#FF6B00,#FF9500)':'var(--card)'};color:${isMe?'white':'var(--text)'};font-size:14px;line-height:1.5;word-break:break-word;">${m.text}</div>
+      <div style="font-size:10px;color:var(--sub);margin-top:3px;${isMe?'text-align:right;':''}">${m.time||''}</div>
+    </div>`;
+  msgList.appendChild(d);
+}
+
+function sendQuickMsg(){
+  const inp=document.getElementById('quick-input');
+  const text=inp.value.trim();
+  if(!text||!window._currentUser)return;
+  h.light(); inp.value='';
+  const {db,ref,push,serverTimestamp}=window._fb;
+  const user=window._currentUser;
+  push(ref(db,'rooms/'+activeRoom),{
+    text,
+    sender:user.displayName||user.email.split('@')[0],
+    uid:user.uid,
+    time:timeStr(),
+    timestamp:serverTimestamp()
   });
 }
+
+// DM Chat (kişiyle özel sohbet - şimdilik oda bazlı)
+let activeChatRoom='';
+function openChat(name,avId,room){
+  h.tap();
+  activeChatRoom=room||activeRoom;
+  document.getElementById('chat-name').textContent=name+' · #'+activeChatRoom;
+  document.getElementById('chat-av').innerHTML=`<svg width="40" height="40"><use href="#av-${avId}"/></svg>`;
+  if(chatListener)chatListener();
+  document.getElementById('chat-msgs').innerHTML='';
+  document.getElementById('chat-screen').classList.add('open');
+
+  if(!window._currentUser)return;
+  const {db,ref,query,limitToLast,onChildAdded}=window._fb;
+  const msgsRef=query(ref(db,'rooms/'+activeChatRoom),limitToLast(60));
+  const seen=new Set();
+  chatListener=onChildAdded(msgsRef,(snap)=>{
+    if(seen.has(snap.key))return;
+    seen.add(snap.key);
+    const m=snap.val();
+    const isMe=m.uid===window._currentUser.uid;
+    appendChatBubble(m.text,isMe?'me':'them',m.time||'');
+    document.getElementById('chat-msgs').scrollTop=9999;
+  });
+}
+
+function closeChat(){h.tap();if(chatListener){chatListener();chatListener=null;}document.getElementById('chat-screen').classList.remove('open');}
+
+function appendChatBubble(text,side,time){
+  const c=document.getElementById('chat-msgs');
+  const tail=side==='me'
+    ?`<div class="bubble-tail"><svg width="14" height="18" viewBox="0 0 14 18" fill="none"><path d="M0 0 C0 0 14 0 14 0 C14 10 8 16 0 18 C4 12 5 6 0 0Z" fill="#FF7A1A"/></svg></div>`
+    :`<div class="bubble-tail"><svg width="14" height="18" viewBox="0 0 14 18" fill="none"><path d="M14 0 C14 0 0 0 0 0 C0 10 6 16 14 18 C10 12 9 6 14 0Z" fill="#F2F2F7"/></svg></div>`;
+  const d=document.createElement('div');
+  d.innerHTML=`<div class="bubble ${side}"><div class="bubble-inner">${tail}${text}</div><div class="bubble-time">${time}</div></div>`;
+  c.appendChild(d.firstChild);
+}
+
 function sendMsg(){
   const inp=document.getElementById('chat-input');
-  const text=inp.value.trim(); if(!text)return;
-  h.light(); sfx.send(); inp.value='';
-  const now=new Date();
-  const time=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
-  chatData[activeName].push({from:'me',text,time});
-  renderMsgs(activeName);
-  const m=document.getElementById('chat-msgs'); m.scrollTop=m.scrollHeight;
-  const replies=['Harika!','Anladım!','Çok güzel!','Haha kesinlikle!','Tamam!','Güzel fikir!'];
-  setTimeout(()=>{
-    sfx.receive();
-    chatData[activeName].push({from:'them',text:replies[Math.floor(Math.random()*replies.length)],time});
-    renderMsgs(activeName); m.scrollTop=m.scrollHeight;
-  },900+Math.random()*800);
+  const text=inp.value.trim();
+  if(!text||!window._currentUser)return;
+  h.light(); inp.value='';
+  const {db,ref,push,serverTimestamp}=window._fb;
+  const user=window._currentUser;
+  push(ref(db,'rooms/'+activeChatRoom),{
+    text,
+    sender:user.displayName||user.email.split('@')[0],
+    uid:user.uid,
+    time:timeStr(),
+    timestamp:serverTimestamp()
+  });
 }
 
-/* ══ MUSIC PLAYER ══ */
-const music = {
-  library:[], current:-1,
-  audio: new Audio(),
-  playing: false,
-  timer: null,
+// ══════════════════════════════════════════════════════════
+// MÜZİK PLAYER
+// ══════════════════════════════════════════════════════════
+const music={library:[],current:-1,audio:new Audio(),playing:false,timer:null};
+let _ctx=null;
+function ctx(){if(!_ctx)_ctx=new(window.AudioContext||window.webkitAudioContext)();if(_ctx.state==='suspended')_ctx.resume();return _ctx;}
+function softTone(freq,vol,atk,dec,offset){const c=ctx(),o=c.createOscillator(),g=c.createGain(),f=c.createBiquadFilter();o.connect(f);f.connect(g);g.connect(c.destination);o.type='sine';f.type='lowpass';f.frequency.value=freq*2.5;o.frequency.setValueAtTime(freq,c.currentTime+offset);g.gain.setValueAtTime(0,c.currentTime+offset);g.gain.linearRampToValueAtTime(vol,c.currentTime+offset+atk);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+offset+atk+dec);o.start(c.currentTime+offset);o.stop(c.currentTime+offset+atk+dec+0.05);}
+const sfx={
+  send:()=>{const c=ctx(),o=c.createOscillator(),g=c.createGain(),f=c.createBiquadFilter();o.connect(f);f.connect(g);g.connect(c.destination);o.type='sine';f.type='bandpass';f.frequency.value=900;f.Q.value=0.8;o.frequency.setValueAtTime(320,c.currentTime);o.frequency.exponentialRampToValueAtTime(680,c.currentTime+0.18);g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(0.13,c.currentTime+0.04);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.22);o.start(c.currentTime);o.stop(c.currentTime+0.3);},
+  receive:()=>{softTone(880,0.11,0.008,0.28,0);softTone(1320,0.07,0.008,0.22,0.14);},
+  correct:()=>{softTone(523,0.10,0.01,0.18,0);softTone(659,0.09,0.01,0.18,0.1);softTone(784,0.10,0.01,0.20,0.2);softTone(1046,0.08,0.01,0.30,0.32);},
+  wrong:()=>{const c=ctx(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type='sine';o.frequency.setValueAtTime(340,c.currentTime);o.frequency.exponentialRampToValueAtTime(200,c.currentTime+0.35);g.gain.setValueAtTime(0.12,c.currentTime);g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+0.4);o.start(c.currentTime);o.stop(c.currentTime+0.45);},
+  task:()=>{softTone(440,0.09,0.01,0.14,0);softTone(554,0.09,0.01,0.14,0.1);softTone(659,0.10,0.01,0.16,0.2);softTone(880,0.09,0.01,0.26,0.33);},
+  coin:()=>{softTone(1200,0.10,0.005,0.14,0);softTone(1500,0.07,0.005,0.12,0.08);},
 };
-
-const albumColors=[
-  ['#FF6B00','#FF9500'],['#AF52DE','#7B2FBE'],
-  ['#007AFF','#34AADC'],['#FF2D55','#FF6B8A'],
-  ['#34C759','#30D158'],['#FFD60A','#FF9500'],
-  ['#5AC8FA','#007AFF'],['#FF6B00','#AF52DE'],
-];
-function aGrad(i){const c=albumColors[i%albumColors.length];return `linear-gradient(135deg,${c[0]},${c[1]})`;}
-
-function uploadMusic(e){
-  Array.from(e.target.files).forEach(f=>{
-    const url=URL.createObjectURL(f);
-    let title=f.name.replace(/\.[^.]+$/,'').replace(/_/g,' '), artist='Bilinmiyor';
-    if(title.includes(' - ')){const p=title.split(' - ');artist=p[0].trim();title=p.slice(1).join(' - ').trim();}
-    music.library.push({url,title,artist});
-  });
-  e.target.value='';
-  renderLibrary();
-  if(music.current===-1 && music.library.length) playSong(0);
-}
-
-function renderLibrary(){
-  const el=document.getElementById('song-list');
-  if(!music.library.length){
-    el.innerHTML='<div style="text-align:center;padding:32px 0;color:var(--sub);font-size:13px;">Henüz şarkı yok — yukarıdan ekle 🎵</div>';
-    return;
-  }
-  el.innerHTML=music.library.map((s,i)=>`
-    <div class="song-row${i===music.current?' playing':''}" onclick="playSong(${i})">
-      <div class="song-thumb" style="background:${aGrad(i)}">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-      </div>
-      <div class="song-info">
-        <div class="song-title">${s.title}</div>
-        <div class="song-meta">${s.artist}</div>
-      </div>
-      ${i===music.current&&music.playing
-        ?'<div class="eq-bars"><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div></div>'
-        :`<div class="song-dur" id="dur-${i}">—</div>`}
-    </div>`).join('');
-  music.library.forEach((s,i)=>{
-    const a=new Audio(s.url);
-    a.addEventListener('loadedmetadata',()=>{const d=document.getElementById('dur-'+i);if(d)d.textContent=fmt(a.duration);});
-  });
-}
-
-function playSong(i){
-  if(i<0||i>=music.library.length)return;
-  h.tap(); music.current=i;
-  const s=music.library[i];
-  music.audio.pause(); music.audio.src=s.url; music.audio.play(); music.playing=true;
-
-  // büyük çalar
-  document.getElementById('now-title').textContent=s.title;
-  document.getElementById('now-artist').textContent=s.artist;
-  const art=document.getElementById('album-art');
-  art.style.cssText=`background:${aGrad(i)};width:180px;height:180px;border-radius:20px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 40px rgba(0,0,0,.5);position:relative;z-index:1;transition:transform .3s`;
-  art.innerHTML=`<svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.2" opacity=".8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
-
-  // mini player
-  const mp=document.getElementById('mini-player');
-  mp.classList.add('visible');
-  document.getElementById('mini-title').textContent=s.title;
-  document.getElementById('mini-artist').textContent=s.artist;
-  const ma=document.getElementById('mini-art');
-  ma.style.cssText=`background:${aGrad(i)};width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0`;
-  ma.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
-
-  // profil now playing
-  document.getElementById('np-title').textContent=s.title;
-  document.getElementById('np-artist').textContent=s.artist;
-  const na=document.getElementById('np-art');
-  na.style.cssText=`background:${aGrad(i)};width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0`;
-  na.innerHTML=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
-  document.getElementById('profile-now-playing').style.display='block';
-
-  setPlayIcons(true); renderLibrary(); startProg();
-}
-
-function togglePlay(){
-  if(!music.library.length){showToast('Önce müzik ekle!');return;}
-  if(music.current===-1){playSong(0);return;}
-  h.tap();
-  if(music.playing){music.audio.pause();music.playing=false;clearInterval(music.timer);}
-  else{music.audio.play();music.playing=true;startProg();}
-  setPlayIcons(music.playing); renderLibrary();
-}
-
-function setPlayIcons(p){
-  const pi=`<svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>`;
-  const pa=`<svg width="26" height="26" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
-  const mi=`<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>`;
-  const ma=`<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
-  document.getElementById('play-btn').innerHTML=p?pa:pi;
-  document.getElementById('mini-play-btn').innerHTML=p?ma:mi;
-  const eq=document.getElementById('np-eq');
-  if(eq){eq.style.display=p?'flex':'none';}
-}
-
+const albumColors=[['#FF6B00','#FF9500'],['#AF52DE','#7B2FBE'],['#007AFF','#34AADC'],['#FF2D55','#FF6B8A'],['#34C759','#30D158'],['#FFD60A','#FF9500']];
+function aGrad(i){const c=albumColors[i%albumColors.length];return`linear-gradient(135deg,${c[0]},${c[1]})`;}
+function uploadMusic(e){Array.from(e.target.files).forEach(f=>{const url=URL.createObjectURL(f);let title=f.name.replace(/\.[^.]+$/,'').replace(/_/g,' '),artist='Bilinmiyor';if(title.includes(' - ')){const p=title.split(' - ');artist=p[0].trim();title=p.slice(1).join(' - ').trim();}music.library.push({url,title,artist});});e.target.value='';renderLibrary();if(music.current===-1&&music.library.length)playSong(0);}
+function renderLibrary(){const el=document.getElementById('song-list');if(!music.library.length){el.innerHTML='<div style="text-align:center;padding:32px 0;color:var(--sub);font-size:13px;">Henüz şarkı yok — yukarıdan ekle 🎵</div>';return;}el.innerHTML=music.library.map((s,i)=>`<div class="song-row${i===music.current?' playing':''}" onclick="playSong(${i})"><div class="song-thumb" style="background:${aGrad(i)}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="song-info"><div class="song-title">${s.title}</div><div class="song-meta">${s.artist}</div></div>${i===music.current&&music.playing?'<div class="eq-bars"><div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div></div>':`<div class="song-dur" id="dur-${i}">—</div>`}</div>`).join('');music.library.forEach((s,i)=>{const a=new Audio(s.url);a.addEventListener('loadedmetadata',()=>{const d=document.getElementById('dur-'+i);if(d)d.textContent=fmt(a.duration);});});}
+function playSong(i){if(i<0||i>=music.library.length)return;h.tap();music.current=i;const s=music.library[i];music.audio.pause();music.audio.src=s.url;music.audio.play();music.playing=true;document.getElementById('now-title').textContent=s.title;document.getElementById('now-artist').textContent=s.artist;const art=document.getElementById('album-art');art.style.cssText=`background:${aGrad(i)};width:180px;height:180px;border-radius:20px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 40px rgba(0,0,0,.5);position:relative;z-index:1;transition:transform .3s`;art.innerHTML=`<svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.2" opacity=".8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;const mp=document.getElementById('mini-player');mp.classList.add('visible');document.getElementById('mini-title').textContent=s.title;document.getElementById('mini-artist').textContent=s.artist;const ma=document.getElementById('mini-art');ma.style.cssText=`background:${aGrad(i)};width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0`;ma.innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;setPlayIcons(true);renderLibrary();startProg();}
+function togglePlay(){if(!music.library.length){showToast('Önce müzik ekle!');return;}if(music.current===-1){playSong(0);return;}h.tap();if(music.playing){music.audio.pause();music.playing=false;clearInterval(music.timer);}else{music.audio.play();music.playing=true;startProg();}setPlayIcons(music.playing);renderLibrary();}
+function setPlayIcons(p){const pi=`<svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>`;const pa=`<svg width="26" height="26" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;const mi=`<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>`;const ma=`<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;document.getElementById('play-btn').innerHTML=p?pa:pi;document.getElementById('mini-play-btn').innerHTML=p?ma:mi;}
 function nextSong(){if(!music.library.length)return;playSong((music.current+1)%music.library.length);}
-function prevSong(){
-  if(!music.library.length)return;
-  if(music.audio.currentTime>3){music.audio.currentTime=0;return;}
-  playSong((music.current-1+music.library.length)%music.library.length);
-}
-
-function startProg(){
-  clearInterval(music.timer);
-  music.timer=setInterval(()=>{
-    if(!music.audio.duration)return;
-    const p=(music.audio.currentTime/music.audio.duration)*100;
-    document.getElementById('prog-fill').style.width=p+'%';
-    document.getElementById('prog-thumb').style.left=p+'%';
-    document.getElementById('time-cur').textContent=fmt(music.audio.currentTime);
-    document.getElementById('time-tot').textContent=fmt(music.audio.duration);
-  },500);
-}
-
-function seekMusic(e){
-  if(!music.audio.duration)return;
-  const r=e.currentTarget.getBoundingClientRect();
-  music.audio.currentTime=((e.clientX-r.left)/r.width)*music.audio.duration;
-}
-
-function fmt(s){
-  if(!s||isNaN(s))return'0:00';
-  return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
-}
-
+function prevSong(){if(!music.library.length)return;if(music.audio.currentTime>3){music.audio.currentTime=0;return;}playSong((music.current-1+music.library.length)%music.library.length);}
+function startProg(){clearInterval(music.timer);music.timer=setInterval(()=>{if(!music.audio.duration)return;const p=(music.audio.currentTime/music.audio.duration)*100;document.getElementById('prog-fill').style.width=p+'%';document.getElementById('prog-thumb').style.left=p+'%';document.getElementById('time-cur').textContent=fmt(music.audio.currentTime);document.getElementById('time-tot').textContent=fmt(music.audio.duration);},500);}
+function seekMusic(e){if(!music.audio.duration)return;const r=e.currentTarget.getBoundingClientRect();music.audio.currentTime=((e.clientX-r.left)/r.width)*music.audio.duration;}
+function fmt(s){if(!s||isNaN(s))return'0:00';return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');}
 music.audio.addEventListener('ended',nextSong);
 </script>
+
 </body>
 </html>
