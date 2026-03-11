@@ -28,15 +28,16 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 
-// Ana ekran (PWA) modunda oturum kalıcılığını zorla
-try { await setPersistence(auth, browserLocalPersistence); } catch(e) { console.warn(‘Persistence:’, e); }
-
 window._fb = { auth, db, ref, push, onChildAdded, serverTimestamp, query, limitToLast, onValue, set, get, off,
-createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile };
+createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile,
+browserLocalPersistence, setPersistence };
 
+// Persistence ayarla, sonra auth dinle
+setPersistence(auth, browserLocalPersistence).catch(()=>{}).finally(()=>{
 onAuthStateChanged(auth, (user) => {
 window._currentUser = user;
 document.dispatchEvent(new CustomEvent(‘auth-changed’, { detail: { user } }));
+});
 });
 </script>
 
