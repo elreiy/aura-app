@@ -9,29 +9,45 @@
 <meta name="apple-mobile-web-app-title" content="Aura">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Aura</title>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getDatabase, ref, push, onChildAdded, serverTimestamp, query, limitToLast, onValue, set, get, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAYnbV7A9P21my5e8tH7aeFFOCJTajCOMs",
+    authDomain: "aura-app-5284e.firebaseapp.com",
+    databaseURL: "https://aura-app-5284e-default-rtdb.firebaseio.com",
+    projectId: "aura-app-5284e",
+    storageBucket: "aura-app-5284e.firebasestorage.app",
+    messagingSenderId: "145654229990",
+    appId: "1:145654229990:web:fada57fa05bffe887c0427"
+  };
 
-const firebaseConfig = {
-apiKey: “AIzaSyAYnbV7A9P21my5e8tH7aeFFOCJTajCOMs”,
-authDomain: “aura-app-5284e.firebaseapp.com”,
-databaseURL: “https://aura-app-5284e-default-rtdb.firebaseio.com”,
-projectId: “aura-app-5284e”,
-storageBucket: “aura-app-5284e.firebasestorage.app”,
-messagingSenderId: “145654229990”,
-appId: “1:145654229990:web:fada57fa05bffe887c0427”
+firebase.initializeApp(firebaseConfig);
+const _auth = firebase.auth();
+const _db = firebase.database();
+
+// Compat API’yi modüler API gibi kullanmak için sarmalayıcılar
+window._fb = {
+auth: _auth,
+db: _db,
+createUserWithEmailAndPassword: (auth, email, pass) => auth.createUserWithEmailAndPassword(email, pass),
+signInWithEmailAndPassword: (auth, email, pass) => auth.signInWithEmailAndPassword(email, pass),
+signOut: (auth) => auth.signOut(),
+updateProfile: (user, data) => user.updateProfile(data),
+ref: (db, path) => db.ref(path),
+push: (ref, data) => ref.push(data),
+set: (ref, data) => ref.set(data),
+get: (ref) => ref.once(‘value’).then(snap => ({ exists: () => snap.exists(), val: () => snap.val(), forEach: (cb) => snap.forEach(cb) })),
+onValue: (ref, cb) => { ref.on(‘value’, snap => cb({ exists: () => snap.exists(), val: () => snap.val() })); return () => ref.off(‘value’); },
+onChildAdded: (ref, cb) => { ref.on(‘child_added’, snap => cb({ key: snap.key, val: () => snap.val() })); return () => ref.off(‘child_added’); },
+query: (ref, …constraints) => { let q = ref; constraints.forEach(c => { q = c(q); }); return q; },
+limitToLast: (n) => (ref) => ref.limitToLast(n),
+serverTimestamp: () => firebase.database.ServerValue.TIMESTAMP,
+off: (ref) => ref ? ref.off() : null
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
-
-window._fb = { auth, db, ref, push, onChildAdded, serverTimestamp, query, limitToLast, onValue, set, get, off,
-createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile };
-
-onAuthStateChanged(auth, (user) => {
+_auth.onAuthStateChanged((user) => {
 window._currentUser = user;
 document.dispatchEvent(new CustomEvent(‘auth-changed’, { detail: { user } }));
 });
@@ -1201,10 +1217,10 @@ async function registerUser(){
   if(!email||!pass){ document.getElementById('reg-err').textContent='Tüm alanları doldurunuz'; return; }
   setLoading('reg', true);
   try{
-    const {createUserWithEmailAndPassword, updateProfile, auth, db, ref, set} = window._fb;
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await updateProfile(cred.user, {displayName: name});
-    await set(ref(db, 'users/'+cred.user.uid), {
+    const {auth, db} = window._fb;
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    await cred.user.updateProfile({displayName: name});
+    await db.ref('users/'+cred.user.uid).set({
       name, email,
       username: name.toLowerCase().replace(/\s+/g,'_') + '_' + Math.floor(Math.random()*1000),
       createdAt: Date.now()
@@ -1219,19 +1235,15 @@ async function loginUser(){
   if(!window._fb){ document.getElementById('login-err').textContent='Bağlantı kuruluyor, lütfen bekleyin...'; setTimeout(loginUser, 1500); return; }
   setLoading('login', true);
   try{
-    const {signInWithEmailAndPassword, auth} = window._fb;
-    await signInWithEmailAndPassword(auth, email, pass);
+    const {auth} = window._fb;
+    await auth.signInWithEmailAndPassword(email, pass);
     document.getElementById('login-err').textContent = '';
-  }catch(e){
-    setLoading('login',false);
-    console.error('Login error:', e.code, e.message);
-    authError('login', e.code);
-  }
+  }catch(e){ setLoading('login',false); console.error('Login error:', e.code, e.message); authError('login',e.code); }
 }
 async function logoutUser(){
   if(!confirm('Çıkış yapmak istediğinize emin misiniz?')) return;
   if(dmListener){ dmListener(); dmListener=null; }
-  await window._fb.signOut(window._fb.auth);
+  await window._fb.auth.signOut();
 }
 
 document.addEventListener('auth-changed', async(e)=>{
@@ -1257,9 +1269,9 @@ function updateFbStatus(on){
 }
 
 async function loadUserProfile(user){
-  const {db, ref, get} = window._fb;
+  const {db} = window._fb;
   try{
-    const snap = await get(ref(db,'users/'+user.uid));
+    const snap = await db.ref('users/'+user.uid).once('value');
     if(snap.exists()) userProfile = snap.val();
   }catch(e){}
 
@@ -1368,28 +1380,19 @@ async function saveProfile(){
   const bio = document.getElementById('edit-bio').value.trim();
   const city = document.getElementById('edit-city').value.trim();
   const birthday = document.getElementById('edit-birthday').value;
-
   if(!name){ showToast('İsim boş olamaz'); return; }
-
-  const {updateProfile, auth, db, ref, set} = window._fb;
+  const {db} = window._fb;
   try{
-    await updateProfile(user, {displayName: name});
+    await user.updateProfile({displayName: name});
     const profileData = { name, username, bio, city, birthday, email: user.email, updatedAt: Date.now() };
     if(pendingPhotoDataUrl) profileData.photoDataUrl = pendingPhotoDataUrl;
-    await set(ref(db,'users/'+user.uid), profileData);
+    await db.ref('users/'+user.uid).set(profileData);
     userProfile = {...userProfile, ...profileData};
-
     document.getElementById('profile-display-name').textContent = name;
     document.getElementById('leaderboard-me').textContent = name;
     const initial = name.charAt(0).toUpperCase();
-    if(pendingPhotoDataUrl){
-      setProfilePhoto(pendingPhotoDataUrl);
-    } else {
-      ['home-avatar-initial','profile-avatar-initial'].forEach(id=>{
-        const el = document.getElementById(id);
-        if(el) el.textContent = initial;
-      });
-    }
+    if(pendingPhotoDataUrl){ setProfilePhoto(pendingPhotoDataUrl); }
+    else { ['home-avatar-initial','profile-avatar-initial'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=initial; }); }
     if(bio) document.getElementById('profile-bio-display').textContent = bio;
     if(birthday){ const zodiac = getZodiac(birthday); showZodiacBadge(zodiac); }
     closeEditProfile();
@@ -1465,19 +1468,13 @@ function showMsgTab(tab, btn){
 async function loadFriendsList(){
   const user = window._currentUser;
   if(!user) return;
-  const {db, ref, get} = window._fb;
+  const {db} = window._fb;
   const listEl = document.getElementById('friends-list');
   listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--sub);font-size:13px;">Yükleniyor...</div>';
-
   try{
-    const snap = await get(ref(db,'friends/'+user.uid));
-    if(!snap.exists() || !Object.keys(snap.val()).length){
-      listEl.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-msg"/></svg></div>
-          <div class="empty-state-title">Henüz arkadaşın yok</div>
-          <div class="empty-state-sub">Sağ üstteki + butonuna basarak arkadaş ekleyebilirsin</div>
-        </div>`;
+    const snap = await db.ref('friends/'+user.uid).once('value');
+    if(!snap.exists() || !Object.keys(snap.val()||{}).length){
+      listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-msg"/></svg></div><div class="empty-state-title">Henüz arkadaşın yok</div><div class="empty-state-sub">Sağ üstteki + butonuna basarak arkadaş ekleyebilirsin</div></div>`;
       return;
     }
     const friends = snap.val();
@@ -1485,7 +1482,7 @@ async function loadFriendsList(){
     for(const [fuid, fdata] of Object.entries(friends)){
       if(fdata.status !== 'accepted') continue;
       const dmId = getDMId(user.uid, fuid);
-      const msgsSnap = await get(ref(db,'dms/'+dmId));
+      const msgsSnap = await db.ref('dms/'+dmId).once('value');
       let lastMsg = '', lastTime = '';
       if(msgsSnap.exists()){
         const msgs = Object.values(msgsSnap.val());
@@ -1507,9 +1504,7 @@ async function loadFriendsList(){
           <div class="friend-name">${fdata.name||'Kullanıcı'}</div>
           <div class="friend-preview">${lastMsg || 'Henüz mesaj yok'}</div>
         </div>
-        <div class="friend-meta">
-          <span class="friend-time">${lastTime}</span>
-        </div>`;
+        <div class="friend-meta"><span class="friend-time">${lastTime}</span></div>`;
       listEl.appendChild(item);
     }
     if(!listEl.children.length){
@@ -1521,22 +1516,15 @@ async function loadFriendsList(){
 async function loadFriendRequests(){
   const user = window._currentUser;
   if(!user) return;
-  const {db, ref, get, set} = window._fb;
+  const {db} = window._fb;
   const listEl = document.getElementById('requests-list');
   listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--sub);font-size:13px;">Yükleniyor...</div>';
-
   try{
-    const snap = await get(ref(db,'friends/'+user.uid));
-    if(!snap.exists()){
-      listEl.innerHTML=`<div class="empty-state"><div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-req"/></svg></div><div class="empty-state-title">İstek yok</div></div>`;
-      return;
-    }
+    const snap = await db.ref('friends/'+user.uid).once('value');
+    if(!snap.exists()){ listEl.innerHTML=`<div class="empty-state"><div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-req"/></svg></div><div class="empty-state-title">İstek yok</div></div>`; return; }
     const friends = snap.val();
     const requests = Object.entries(friends).filter(([,v])=>v.status==='incoming');
-    if(!requests.length){
-      listEl.innerHTML=`<div class="empty-state"><div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-req"/></svg></div><div class="empty-state-title">Bekleyen istek yok</div></div>`;
-      return;
-    }
+    if(!requests.length){ listEl.innerHTML=`<div class="empty-state"><div class="empty-state-icon"><svg width="56" height="56"><use href="#ic-no-req"/></svg></div><div class="empty-state-title">Bekleyen istek yok</div></div>`; return; }
     document.getElementById('req-count-badge').textContent = requests.length ? ` (${requests.length})` : '';
     listEl.innerHTML = '';
     for(const [fuid, fdata] of requests){
@@ -1545,10 +1533,7 @@ async function loadFriendRequests(){
       div.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);';
       div.innerHTML = `
         <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:white;flex-shrink:0;">${initial}</div>
-        <div style="flex:1;">
-          <div style="font-size:15px;font-weight:500;">${fdata.name||'Kullanıcı'}</div>
-          <div style="font-size:12px;color:var(--sub);">Arkadaşlık isteği gönderdi</div>
-        </div>
+        <div style="flex:1;"><div style="font-size:15px;font-weight:500;">${fdata.name||'Kullanıcı'}</div><div style="font-size:12px;color:var(--sub);">Arkadaşlık isteği gönderdi</div></div>
         <div style="display:flex;gap:6px;">
           <button onclick="acceptFriend('${fuid}','${(fdata.name||'').replace(/'/g,"\\'")}',this)" style="padding:7px 13px;background:var(--accent);border:none;border-radius:20px;font-size:13px;font-weight:600;color:white;cursor:pointer;font-family:'DM Sans',sans-serif;">Kabul</button>
           <button onclick="rejectFriend('${fuid}',this)" style="padding:7px 11px;background:var(--card);border:none;border-radius:20px;font-size:13px;color:var(--sub);cursor:pointer;font-family:'DM Sans',sans-serif;">Reddet</button>
@@ -1561,12 +1546,12 @@ async function loadFriendRequests(){
 async function acceptFriend(fuid, fname, btn){
   const user = window._currentUser;
   if(!user) return;
-  const {db, ref, set} = window._fb;
+  const {db} = window._fb;
   h.success(); sfx.task();
   const myData = { name: user.displayName||userProfile.name||'Kullanıcı', status:'accepted', uid:user.uid };
   if(userProfile.photoDataUrl) myData.photoDataUrl = userProfile.photoDataUrl;
-  await set(ref(db,'friends/'+fuid+'/'+user.uid), myData);
-  await set(ref(db,'friends/'+user.uid+'/'+fuid), { name:fname, status:'accepted', uid:fuid });
+  await db.ref('friends/'+fuid+'/'+user.uid).set(myData);
+  await db.ref('friends/'+user.uid+'/'+fuid).set({ name:fname, status:'accepted', uid:fuid });
   btn.closest('div[style]').remove();
   showToast(fname+' ile artık arkadaşsınız!');
   loadFriendsList();
@@ -1575,13 +1560,11 @@ async function acceptFriend(fuid, fname, btn){
 async function rejectFriend(fuid, btn){
   const user = window._currentUser;
   if(!user) return;
-  const {db, ref, set} = window._fb;
-  await set(ref(db,'friends/'+user.uid+'/'+fuid), null);
+  await window._fb.db.ref('friends/'+user.uid+'/'+fuid).remove();
   btn.closest('div[style]').remove();
   showToast('İstek reddedildi');
 }
 
-let searchTimer = null;
 async function searchUsers(query){
   clearTimeout(searchTimer);
   const resultsEl = document.getElementById('search-results');
@@ -1590,9 +1573,9 @@ async function searchUsers(query){
   searchTimer = setTimeout(async()=>{
     const user = window._currentUser;
     if(!user) return;
-    const {db, ref, get} = window._fb;
+    const {db} = window._fb;
     try{
-      const snap = await get(ref(db,'users'));
+      const snap = await db.ref('users').once('value');
       if(!snap.exists()){ resultsEl.innerHTML='<div style="text-align:center;padding:16px;color:var(--sub);font-size:13px;">Kullanıcı bulunamadı</div>'; return; }
       const users = snap.val();
       const q = query.toLowerCase();
@@ -1608,10 +1591,7 @@ async function searchUsers(query){
         div.className = 'user-result';
         div.innerHTML = `
           <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#FF6B00,#FF9500);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:white;flex-shrink:0;">${initial}</div>
-          <div style="flex:1;">
-            <div style="font-size:14px;font-weight:500;">${u.name||'Kullanıcı'}</div>
-            <div style="font-size:12px;color:var(--sub);">@${u.username||u.email}</div>
-          </div>
+          <div style="flex:1;"><div style="font-size:14px;font-weight:500;">${u.name||'Kullanıcı'}</div><div style="font-size:12px;color:var(--sub);">@${u.username||u.email}</div></div>
           <button class="add-btn" id="addbtn-${uid}" onclick="sendFriendRequest('${uid}','${(u.name||'').replace(/'/g,"\\'")}',this)">Ekle</button>`;
         resultsEl.appendChild(div);
       }
@@ -1622,14 +1602,14 @@ async function searchUsers(query){
 async function sendFriendRequest(toUid, toName, btn){
   const user = window._currentUser;
   if(!user) return;
-  const {db, ref, set, get} = window._fb;
+  const {db} = window._fb;
   h.tap();
-  const existing = await get(ref(db,'friends/'+user.uid+'/'+toUid));
+  const existing = await db.ref('friends/'+user.uid+'/'+toUid).once('value');
   if(existing.exists()){ showToast('Zaten arkadaşsınız veya istek bekliyor'); return; }
   const myData = { name: user.displayName||userProfile.name||'Kullanıcı', status: 'incoming', uid: user.uid };
   if(userProfile.photoDataUrl) myData.photoDataUrl = userProfile.photoDataUrl;
-  await set(ref(db,'friends/'+toUid+'/'+user.uid), myData);
-  await set(ref(db,'friends/'+user.uid+'/'+toUid), { name:toName, status:'sent', uid:toUid });
+  await db.ref('friends/'+toUid+'/'+user.uid).set(myData);
+  await db.ref('friends/'+user.uid+'/'+toUid).set({ name:toName, status:'sent', uid:toUid });
   btn.textContent = 'Gönderildi';
   btn.classList.add('sent');
   btn.disabled = true;
@@ -1644,12 +1624,8 @@ function openDM(friendUid, friendName, color, initial, photoUrl){
   h.tap();
   activeDMUserId = friendUid;
   const chatAv = document.getElementById('chat-av-el');
-  if(photoUrl){
-    chatAv.innerHTML = `<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-  } else {
-    chatAv.style.background = color;
-    chatAv.textContent = initial;
-  }
+  if(photoUrl){ chatAv.innerHTML = `<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
+  else { chatAv.style.background = color; chatAv.textContent = initial; }
   document.getElementById('chat-name-el').textContent = friendName;
   if(dmListener){ dmListener(); dmListener=null; }
   document.getElementById('chat-msgs').innerHTML = '';
@@ -1657,11 +1633,11 @@ function openDM(friendUid, friendName, color, initial, photoUrl){
 
   const user = window._currentUser;
   if(!user) return;
-  const {db, ref, query, limitToLast, onChildAdded} = window._fb;
+  const {db} = window._fb;
   const dmId = getDMId(user.uid, friendUid);
-  const msgsRef = query(ref(db,'dms/'+dmId), limitToLast(80));
+  const msgsRef = db.ref('dms/'+dmId).limitToLast(80);
   const seen = new Set();
-  dmListener = onChildAdded(msgsRef, (snap)=>{
+  msgsRef.on('child_added', (snap)=>{
     if(seen.has(snap.key)) return;
     seen.add(snap.key);
     const m = snap.val();
@@ -1671,6 +1647,7 @@ function openDM(friendUid, friendName, color, initial, photoUrl){
     msgs.scrollTop = msgs.scrollHeight;
     if(!isMe) sfx.receive();
   });
+  dmListener = () => msgsRef.off('child_added');
 }
 
 function closeChat(){
@@ -1697,9 +1674,9 @@ async function sendDM(){
   const user = window._currentUser;
   if(!text || !user || !activeDMUserId) return;
   h.light(); sfx.send(); inp.value='';
-  const {db, ref, push, serverTimestamp} = window._fb;
+  const {db} = window._fb;
   const dmId = getDMId(user.uid, activeDMUserId);
-  await push(ref(db,'dms/'+dmId), { text, uid:user.uid, time: timeStr(), timestamp: serverTimestamp() });
+  await db.ref('dms/'+dmId).push({ text, uid:user.uid, time: timeStr(), timestamp: firebase.database.ServerValue.TIMESTAMP });
 }
 
 // ════════════════════════════════════════════
@@ -1765,10 +1742,7 @@ async function saveGoal(){
   stepGoal = v; userProfile.stepGoal = v;
   if(healthData){ healthData.stepGoal = v; localStorage.setItem('aura_health', JSON.stringify(healthData)); }
   const user = window._currentUser;
-  if(user){
-    const {db, ref, set} = window._fb;
-    try{ await set(ref(db,'users/'+user.uid+'/stepGoal'), v); }catch(e){}
-  }
+  if(user){ try{ await window._fb.db.ref('users/'+user.uid+'/stepGoal').set(v); }catch(e){} }
   closeGoalModal();
   renderHealthData();
   showToast('Hedef güncellendi: '+v.toLocaleString('tr-TR')+' adım!');
