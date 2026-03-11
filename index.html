@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
@@ -22,35 +23,36 @@
     appId: "1:145654229990:web:fada57fa05bffe887c0427"
   };
 
-  firebase.initializeApp(firebaseConfig);
-  const _auth = firebase.auth();
-  const _db = firebase.database();
+firebase.initializeApp(firebaseConfig);
+const _auth = firebase.auth();
+const _db = firebase.database();
 
-  // Compat API'yi modüler API gibi kullanmak için sarmalayıcılar
-  window._fb = {
-    auth: _auth,
-    db: _db,
-    createUserWithEmailAndPassword: (auth, email, pass) => auth.createUserWithEmailAndPassword(email, pass),
-    signInWithEmailAndPassword: (auth, email, pass) => auth.signInWithEmailAndPassword(email, pass),
-    signOut: (auth) => auth.signOut(),
-    updateProfile: (user, data) => user.updateProfile(data),
-    ref: (db, path) => db.ref(path),
-    push: (ref, data) => ref.push(data),
-    set: (ref, data) => ref.set(data),
-    get: (ref) => ref.once('value').then(snap => ({ exists: () => snap.exists(), val: () => snap.val(), forEach: (cb) => snap.forEach(cb) })),
-    onValue: (ref, cb) => { ref.on('value', snap => cb({ exists: () => snap.exists(), val: () => snap.val() })); return () => ref.off('value'); },
-    onChildAdded: (ref, cb) => { ref.on('child_added', snap => cb({ key: snap.key, val: () => snap.val() })); return () => ref.off('child_added'); },
-    query: (ref, ...constraints) => { let q = ref; constraints.forEach(c => { q = c(q); }); return q; },
-    limitToLast: (n) => (ref) => ref.limitToLast(n),
-    serverTimestamp: () => firebase.database.ServerValue.TIMESTAMP,
-    off: (ref) => ref ? ref.off() : null
-  };
+// Compat API’yi modüler API gibi kullanmak için sarmalayıcılar
+window._fb = {
+auth: _auth,
+db: _db,
+createUserWithEmailAndPassword: (auth, email, pass) => auth.createUserWithEmailAndPassword(email, pass),
+signInWithEmailAndPassword: (auth, email, pass) => auth.signInWithEmailAndPassword(email, pass),
+signOut: (auth) => auth.signOut(),
+updateProfile: (user, data) => user.updateProfile(data),
+ref: (db, path) => db.ref(path),
+push: (ref, data) => ref.push(data),
+set: (ref, data) => ref.set(data),
+get: (ref) => ref.once(‘value’).then(snap => ({ exists: () => snap.exists(), val: () => snap.val(), forEach: (cb) => snap.forEach(cb) })),
+onValue: (ref, cb) => { ref.on(‘value’, snap => cb({ exists: () => snap.exists(), val: () => snap.val() })); return () => ref.off(‘value’); },
+onChildAdded: (ref, cb) => { ref.on(‘child_added’, snap => cb({ key: snap.key, val: () => snap.val() })); return () => ref.off(‘child_added’); },
+query: (ref, …constraints) => { let q = ref; constraints.forEach(c => { q = c(q); }); return q; },
+limitToLast: (n) => (ref) => ref.limitToLast(n),
+serverTimestamp: () => firebase.database.ServerValue.TIMESTAMP,
+off: (ref) => ref ? ref.off() : null
+};
 
-  _auth.onAuthStateChanged((user) => {
-    window._currentUser = user;
-    document.dispatchEvent(new CustomEvent('auth-changed', { detail: { user } }));
-  });
+_auth.onAuthStateChanged((user) => {
+window._currentUser = user;
+document.dispatchEvent(new CustomEvent(‘auth-changed’, { detail: { user } }));
+});
 </script>
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap');
 
@@ -556,10 +558,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 .empty-state-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px;}
 .empty-state-sub{font-size:13px;line-height:1.5;}
 </style>
+
 </head>
 <body>
 
 <!-- ══ SVG DEFS ══ -->
+
 <svg width="0" height="0" style="position:absolute;overflow:hidden">
 <defs>
 <symbol id="s-coin" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="#FF9500"/><circle cx="16" cy="16" r="9.5" fill="#FFBF00" opacity=".55"/><text x="16" y="20.5" text-anchor="middle" font-size="9" font-weight="800" fill="white" font-family="sans-serif" opacity=".9">A</text></symbol>
@@ -596,6 +600,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </svg>
 
 <!-- ── AUTH ── -->
+
 <div class="auth-screen show" id="auth-screen">
   <div class="auth-logo">aur<span>a</span></div>
   <div class="auth-sub">Arkadaşlarınla bağlan, büyü</div>
@@ -625,9 +630,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ── TOAST ── -->
+
 <div class="toast" id="toast"></div>
 
 <!-- ══ CHAT OVERLAY ══ -->
+
 <div id="chat-screen">
   <div class="statusbar"><span class="status-clock">9:41</span><span style="color:var(--sub)">◉◉◉</span></div>
   <div class="chat-header">
@@ -657,6 +664,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ══ HOME ══ -->
+
 <div class="screen active" id="screen-home">
   <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="home-header">
@@ -690,57 +698,61 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--sub);"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div>
     </div>
 
-    <div class="section-title">Günün Sorusu</div>
-    <div class="q-card">
-      <div class="q-label"><svg width="18" height="18"><use href="#s-brain"/></svg>Genel Kültür</div>
-      <div class="q-text">Dünyanın en büyük okyanusu hangisidir?</div>
-      <div class="q-options" id="q-opts">
-        <div class="q-option" onclick="answerQ(this,false)">Atlantik</div>
-        <div class="q-option" onclick="answerQ(this,true)">Pasifik</div>
-        <div class="q-option" onclick="answerQ(this,false)">Hint</div>
-        <div class="q-option" onclick="answerQ(this,false)">Arktik</div>
-      </div>
-    </div>
+```
+<div class="section-title">Günün Sorusu</div>
+<div class="q-card">
+  <div class="q-label"><svg width="18" height="18"><use href="#s-brain"/></svg>Genel Kültür</div>
+  <div class="q-text">Dünyanın en büyük okyanusu hangisidir?</div>
+  <div class="q-options" id="q-opts">
+    <div class="q-option" onclick="answerQ(this,false)">Atlantik</div>
+    <div class="q-option" onclick="answerQ(this,true)">Pasifik</div>
+    <div class="q-option" onclick="answerQ(this,false)">Hint</div>
+    <div class="q-option" onclick="answerQ(this,false)">Arktik</div>
+  </div>
+</div>
 
-    <div class="section-title">Görevler</div>
-    <div class="card" style="padding:16px 20px;">
-      <div class="task-item" id="task1" onclick="completeTask('task1',20)">
-        <div class="task-check" id="check1"></div>
-        <svg width="30" height="30" style="flex-shrink:0"><use href="#s-meditate"/></svg>
-        <div style="flex:1;"><div class="task-text">10 dakika meditasyon yap</div><div style="font-size:11px;color:var(--sub);margin-top:1px;">Zihin & Beden</div></div>
-        <div class="task-reward-badge"><svg width="13" height="13"><use href="#s-coin"/></svg>20</div>
-      </div>
-      <div class="task-item" id="task2" onclick="completeTask('task2',15)">
-        <div class="task-check" id="check2"></div>
-        <svg width="30" height="30" style="flex-shrink:0"><use href="#s-msgtask"/></svg>
-        <div style="flex:1;"><div class="task-text">Bir arkadaşına mesaj at</div><div style="font-size:11px;color:var(--sub);margin-top:1px;">Sosyal</div></div>
-        <div class="task-reward-badge"><svg width="13" height="13"><use href="#s-coin"/></svg>15</div>
-      </div>
-      <div class="task-item done" id="task3">
-        <div class="task-check" style="background:var(--green);border-color:var(--green);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
-        <svg width="30" height="30" style="flex-shrink:0"><use href="#s-donetask"/></svg>
-        <div style="flex:1;"><div class="task-text" style="text-decoration:line-through;color:var(--sub);">Günlük soruyu cevapla</div><div style="font-size:11px;color:var(--sub);margin-top:1px;">Bilgi</div></div>
-        <div class="task-reward-badge"><svg width="13" height="13"><use href="#s-coin"/></svg>25</div>
-      </div>
-    </div>
+<div class="section-title">Görevler</div>
+<div class="card" style="padding:16px 20px;">
+  <div class="task-item" id="task1" onclick="completeTask('task1',20)">
+    <div class="task-check" id="check1"></div>
+    <svg width="30" height="30" style="flex-shrink:0"><use href="#s-meditate"/></svg>
+    <div style="flex:1;"><div class="task-text">10 dakika meditasyon yap</div><div style="font-size:11px;color:var(--sub);margin-top:1px;">Zihin & Beden</div></div>
+    <div class="task-reward-badge"><svg width="13" height="13"><use href="#s-coin"/></svg>20</div>
+  </div>
+  <div class="task-item" id="task2" onclick="completeTask('task2',15)">
+    <div class="task-check" id="check2"></div>
+    <svg width="30" height="30" style="flex-shrink:0"><use href="#s-msgtask"/></svg>
+    <div style="flex:1;"><div class="task-text">Bir arkadaşına mesaj at</div><div style="font-size:11px;color:var(--sub);margin-top:1px;">Sosyal</div></div>
+    <div class="task-reward-badge"><svg width="13" height="13"><use href="#s-coin"/></svg>15</div>
+  </div>
+  <div class="task-item done" id="task3">
+    <div class="task-check" style="background:var(--green);border-color:var(--green);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></div>
+    <svg width="30" height="30" style="flex-shrink:0"><use href="#s-donetask"/></svg>
+    <div style="flex:1;"><div class="task-text" style="text-decoration:line-through;color:var(--sub);">Günlük soruyu cevapla</div><div style="font-size:11px;color:var(--sub);margin-top:1px;">Bilgi</div></div>
+    <div class="task-reward-badge"><svg width="13" height="13"><use href="#s-coin"/></svg>25</div>
+  </div>
+</div>
 
-    <div class="section-title">Arkadaşlar</div>
-    <div class="card" style="padding:14px 20px;" id="home-friends-card">
-      <div style="text-align:center;padding:16px 0;color:var(--sub);font-size:13px;">Arkadaş ekle ve aktivitelerini takip et</div>
-    </div>
+<div class="section-title">Arkadaşlar</div>
+<div class="card" style="padding:14px 20px;" id="home-friends-card">
+  <div style="text-align:center;padding:16px 0;color:var(--sub);font-size:13px;">Arkadaş ekle ve aktivitelerini takip et</div>
+</div>
 
-    <div class="card" style="display:flex;align-items:center;gap:14px;">
-      <svg width="54" height="54" style="flex-shrink:0"><use href="#s-flame"/></svg>
-      <div>
-        <div style="font-size:16px;font-weight:600;">7 Günlük Seri</div>
-        <div style="font-size:12px;color:var(--sub);margin-top:2px;">Bu hafta hiç gün kaçırmadın!</div>
-        <div class="streak-dots"><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div></div>
-      </div>
-    </div>
+<div class="card" style="display:flex;align-items:center;gap:14px;">
+  <svg width="54" height="54" style="flex-shrink:0"><use href="#s-flame"/></svg>
+  <div>
+    <div style="font-size:16px;font-weight:600;">7 Günlük Seri</div>
+    <div style="font-size:12px;color:var(--sub);margin-top:2px;">Bu hafta hiç gün kaçırmadın!</div>
+    <div class="streak-dots"><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div><div class="streak-dot"></div></div>
+  </div>
+</div>
+```
+
   </div>
 </div>
 
 <!-- ══ MESSAGES ══ -->
+
 <div class="screen" id="screen-messages">
   <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="msg-screen-header">
@@ -769,6 +781,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ══ GAMES ══ -->
+
 <div class="screen" id="screen-games">
   <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="scroll-area">
@@ -801,6 +814,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ══ AKTİVİTE ══ -->
+
 <div class="screen" id="screen-steps">
   <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="scroll-area">
@@ -832,6 +846,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ══ MÜZİK ══ -->
+
 <div class="screen" id="screen-music">
   <div class="statusbar"><span class="status-clock">9:41</span><span style="color:var(--sub)">◉◉◉</span></div>
   <div class="music-hero">
@@ -868,6 +883,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ══ PROFİL ══ -->
+
 <div class="screen" id="screen-profile">
   <div class="statusbar" style="color:rgba(255,255,255,0.4);"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="profile-hero">
@@ -929,6 +945,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </div>
 
 <!-- ══ BOTTOM NAV ══ -->
+
 <nav class="bottom-nav">
   <div class="nav-item active" id="nav-home" onclick="goTo('home')">
     <svg class="ni" viewBox="0 0 28 28"><use href="#n-home"/></svg>
@@ -957,6 +974,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 </nav>
 
 <!-- ══ MİNİ PLAYER ══ -->
+
 <div class="mini-player" id="mini-player">
   <div class="mini-art" id="mini-art"></div>
   <div class="mini-info"><div class="mini-title" id="mini-title">--</div><div class="mini-artist" id="mini-artist">--</div></div>
@@ -970,6 +988,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <!-- ══════════════════════════════════════
      PROFİL DÜZENLEME — Ayrı backdrop + sheet
 ══════════════════════════════════════ -->
+
 <div class="modal-backdrop" id="edit-profile-backdrop" onclick="closeEditProfile()"></div>
 <div class="modal-sheet" id="edit-profile-modal">
   <div class="sheet-handle"></div>
@@ -1006,6 +1025,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <!-- ══════════════════════════════════════
      HEDEF AYARI — Ayrı backdrop + sheet
 ══════════════════════════════════════ -->
+
 <div class="modal-backdrop" id="goal-backdrop" onclick="closeGoalModal()"></div>
 <div class="modal-sheet" id="goal-modal">
   <div class="sheet-handle"></div>
@@ -1025,6 +1045,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <!-- ══════════════════════════════════════
      ARKADAŞ EKLE — Ayrı backdrop + sheet
 ══════════════════════════════════════ -->
+
 <div class="sheet-backdrop" id="add-friend-backdrop" onclick="closeAddFriend()"></div>
 <div class="bottom-sheet" id="add-friend-sheet">
   <div class="sheet-handle"></div>
@@ -1871,5 +1892,6 @@ const sfx = {
 loadMusicLibrary();
 if(music.library.length > 0) renderLibrary();
 </script>
+
 </body>
 </html>
