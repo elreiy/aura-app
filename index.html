@@ -367,7 +367,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <!-- ══ CHAT OVERLAY ══ -->
 
 <div id="chat-screen">
-  <div class="statusbar"><span id="chat-time">9:41</span><span>◉◉◉</span></div>
+  <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="chat-header">
     <div class="back-btn" onclick="closeChat()">←</div>
     <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex-shrink:0;" id="chat-av"></div>
@@ -395,7 +395,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <!-- ══ HOME ══ -->
 
 <div class="screen active" id="screen-home">
-  <div class="statusbar"><span id="home-time">9:41</span><span>◉◉◉</span></div>
+  <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="home-header">
     <div>
       <div class="aura-logo">aur<span>a</span></div>
@@ -476,7 +476,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <!-- ══ MESSAGES ══ -->
 
 <div class="screen" id="screen-messages">
-  <div class="statusbar"><span>9:41</span><span>◉◉◉</span></div>
+  <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div style="padding:0 18px 12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div class="section-title" style="margin-bottom:0;">Mesajlar</div>
@@ -509,7 +509,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <!-- ══ GAMES ══ -->
 
 <div class="screen" id="screen-games">
-  <div class="statusbar"><span>9:41</span><span>◉◉◉</span></div>
+  <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="scroll-area">
     <div class="section-title">Oyunlar</div>
     <div class="pill-row"><div class="pill active-pill">Tümü</div><div class="pill">Kelime</div><div class="pill">Mantık</div><div class="pill">Hafıza</div></div>
@@ -542,7 +542,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <!-- ══ STEPS ══ -->
 
 <div class="screen" id="screen-steps">
-  <div class="statusbar"><span>9:41</span><span>◉◉◉</span></div>
+  <div class="statusbar"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="scroll-area">
     <div class="section-title">Aktivite</div>
     <div style="display:flex;flex-direction:column;align-items:center;padding:8px 0 6px;">
@@ -579,7 +579,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <!-- ══ PROFILE ══ -->
 
 <div class="screen" id="screen-profile">
-  <div class="statusbar" style="color:rgba(255,255,255,0.4);"><span>9:41</span><span>◉◉◉</span></div>
+  <div class="statusbar" style="color:rgba(255,255,255,0.4);"><span class="status-clock">9:41</span><span>◉◉◉</span></div>
   <div class="profile-hero">
     <div class="profile-avatar-lg"><svg width="38" height="38"><use href="#s-leaf"/></svg></div>
     <div class="profile-name" id="profile-display-name">...</div>
@@ -616,7 +616,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);max
 <!-- ══ MÜZİK ══ -->
 
 <div class="screen" id="screen-music">
-  <div class="statusbar"><span>9:41</span><span style="color:var(--sub)">◉◉◉</span></div>
+  <div class="statusbar"><span class="status-clock">9:41</span><span style="color:var(--sub)">◉◉◉</span></div>
   <div class="music-hero">
     <div class="album-art" id="album-art"><svg width="180" height="180" viewBox="0 0 180 180"><rect width="180" height="180" fill="#2C2C2E"/><circle cx="90" cy="90" r="60" fill="#3A3A3C"/><path d="M78 72 L78 108 L114 90 Z" fill="rgba(255,107,0,0.8)"/></svg></div>
     <div class="music-title" id="now-title">Müzik Seç</div>
@@ -684,7 +684,9 @@ const months=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağust
 const now=new Date();
 document.getElementById('home-date').textContent=`${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
 function timeStr(){const t=new Date();return t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');}
-setInterval(()=>{const s=timeStr();document.getElementById('home-time').textContent=s;document.getElementById('chat-time').textContent=s;},10000);
+function updateAllClocks(){const s=timeStr();document.querySelectorAll('.status-clock').forEach(el=>el.textContent=s);}
+updateAllClocks();
+setInterval(updateAllClocks,15000);
 
 // Toast
 function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
@@ -708,12 +710,12 @@ function flyCoins(fromEl,count){
   count=count||1;const badge=document.querySelector('.coins-badge');const br=badge.getBoundingClientRect();const bx=br.left+br.width/2,by=br.top+br.height/2;
   for(let i=0;i<count;i++){setTimeout(()=>{const sr=fromEl.getBoundingClientRect();const sx=sr.left+sr.width/2-11,sy=sr.top+sr.height/2-11;const coin=document.createElement('div');coin.className='coin-fly';coin.textContent='A';coin.style.cssText=`left:${sx}px;top:${sy}px`;const sc=(Math.random()-.5)*50;coin.style.setProperty('--fly-x',sc+'px');coin.style.setProperty('--fly-y',(sc*.5)+'px');coin.style.setProperty('--end-x',(bx-sx-11)+'px');coin.style.setProperty('--end-y',(by-sy-11)+'px');coin.style.animation='coinFly .7s cubic-bezier(.4,0,.2,1) forwards';document.body.appendChild(coin);coin.addEventListener('animationend',()=>{coin.remove();popBadge();});},i*90);}
 }
-function addCoins(n,sourceEl){coins+=n;document.getElementById('coin-display').textContent=coins;if(sourceEl)flyCoins(sourceEl,Math.min(Math.ceil(n/10),5));else popBadge();}
+function addCoins(n,sourceEl){coins+=n;document.getElementById('coin-display').textContent=coins;sfx.coin();if(sourceEl)flyCoins(sourceEl,Math.min(Math.ceil(n/10),5));else popBadge();}
 
 // Tasks
 function completeTask(id,reward){
   const el=document.getElementById(id);if(el.classList.contains('done'))return;
-  h.success();el.classList.add('done');
+  h.success();sfx.task();el.classList.add('done');
   const num=id.replace('task','');const c=document.getElementById('check'+num);
   c.style.background='var(--green)';c.style.borderColor='var(--green)';
   c.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>';
@@ -723,12 +725,12 @@ function completeTask(id,reward){
 
 // Questions
 let qA=false;
-function answerQ(el,c){if(qA)return;qA=true;if(c)h.success();else h.error();document.querySelectorAll('#q-opts .q-option').forEach(o=>o.style.pointerEvents='none');el.classList.add(c?'correct':'wrong');if(c){addCoins(25,el);showToast('Doğru! +25 coin kazandın!');}else{document.querySelectorAll('#q-opts .q-option')[1].classList.add('correct');showToast('Yanlış. Doğru: Pasifik');}}
+function answerQ(el,c){if(qA)return;qA=true;if(c){h.success();sfx.correct();}else{h.error();sfx.wrong();}document.querySelectorAll('#q-opts .q-option').forEach(o=>o.style.pointerEvents='none');el.classList.add(c?'correct':'wrong');if(c){addCoins(25,el);showToast('Doğru! +25 coin kazandın!');}else{document.querySelectorAll('#q-opts .q-option')[1].classList.add('correct');showToast('Yanlış. Doğru: Pasifik');}}
 let gA=false;
-function answerGQ(el,c){if(gA)return;gA=true;if(c)h.success();else h.error();document.querySelectorAll('#gq-opts .q-option').forEach(o=>o.style.pointerEvents='none');el.classList.add(c?'correct':'wrong');if(c){addCoins(30,el);showToast('Muhteşem! +30 coin kazandın!');}else{document.querySelectorAll('#gq-opts .q-option')[1].classList.add('correct');showToast('Yanlış. Doğru: 300,000 km');}}
+function answerGQ(el,c){if(gA)return;gA=true;if(c){h.success();sfx.correct();}else{h.error();sfx.wrong();}document.querySelectorAll('#gq-opts .q-option').forEach(o=>o.style.pointerEvents='none');el.classList.add(c?'correct':'wrong');if(c){addCoins(30,el);showToast('Muhteşem! +30 coin kazandın!');}else{document.querySelectorAll('#gq-opts .q-option')[1].classList.add('correct');showToast('Yanlış. Doğru: 300,000 km');}}
 
 // Shop
-function buyItem(name,price){if(coins<price){h.error();showToast('Yeterli coin yok!');return;}h.coin();coins-=price;document.getElementById('coin-display').textContent=coins;popBadge();showToast(name+' satın alındı!');}
+function buyItem(name,price){if(coins<price){h.error();sfx.wrong();showToast('Yeterli coin yok!');return;}h.coin();sfx.coin();coins-=price;document.getElementById('coin-display').textContent=coins;popBadge();showToast(name+' satın alındı!');}
 
 // ══════════════════════════════════════════════════════════
 // 🔥 AUTH — Email / Password
@@ -839,6 +841,8 @@ function loadRoomMessages(){
     const isFirst=first&&msgList.querySelector('[data-empty]');
     if(first){msgList.innerHTML='';first=false;}
     appendRoomMsg(m);
+    // Gelen mesajsa ses çal
+    if(window._currentUser && m.uid!==window._currentUser.uid){sfx.receive();}
     msgList.scrollTop=msgList.scrollHeight;
   });
 
@@ -871,7 +875,7 @@ function sendQuickMsg(){
   const inp=document.getElementById('quick-input');
   const text=inp.value.trim();
   if(!text||!window._currentUser)return;
-  h.light(); inp.value='';
+  h.light(); sfx.send(); inp.value='';
   const {db,ref,push,serverTimestamp}=window._fb;
   const user=window._currentUser;
   push(ref(db,'rooms/'+activeRoom),{
@@ -924,7 +928,7 @@ function sendMsg(){
   const inp=document.getElementById('chat-input');
   const text=inp.value.trim();
   if(!text||!window._currentUser)return;
-  h.light(); inp.value='';
+  h.light(); sfx.send(); inp.value='';
   const {db,ref,push,serverTimestamp}=window._fb;
   const user=window._currentUser;
   push(ref(db,'rooms/'+activeChatRoom),{
